@@ -28,6 +28,7 @@ pulseaudio --daemonize=no --exit-idle-time=-1 >"$WORK/pulse.log" 2>&1 & PIDS+=($
 sleep 1
 
 echo "[e2e] app=$APP work=$WORK"
+set +e
 dbus-run-session -- bash -c "
   tauri-driver --port 4444 --native-driver /usr/bin/WebKitWebDriver >'$WORK/tauri-driver.log' 2>&1 &
   DRIVER=\$!
