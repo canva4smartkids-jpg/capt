@@ -1,0 +1,28 @@
+node_modules/
+dist/
+build/
+target/
+*.log
+.DS_Store
+.vite/
+coverage/
+# Android / Gradle
+.gradle/
+local.properties
+*.iml
+.idea/
+apps/android/**/build/
+apps/android-tv/build/
+native/android-capture/build/
+# Tauri
+apps/desktop/src-tauri/gen/schemas/
+apps/desktop/src-tauri/binaries/
+# test outputs (validated samples are copied explicitly into artifacts/samples)
+tests/output/
+*.tmp
+# signing material never committed
+*.jks
+*.keystore
+*.p12
+*.pem
+!**/fixtures/**/*.pem

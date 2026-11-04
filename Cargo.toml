@@ -1,0 +1,43 @@
+[workspace]
+resolver = "2"
+members = [
+  "native/capture-core",
+  "native/media-engine",
+  "native/linux-capture",
+  "native/windows-capture",
+  "native/macos-capture",
+  "native/capture-cli",
+  "services/device-discovery",
+  "services/companion-hub",
+  "apps/desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+rust-version = "1.80"
+authors = ["CaptureOne contributors"]
+
+[workspace.dependencies]
+capture-core = { path = "native/capture-core" }
+media-engine = { path = "native/media-engine" }
+linux-capture = { path = "native/linux-capture" }
+windows-capture-backend = { path = "native/windows-capture" }
+macos-capture = { path = "native/macos-capture" }
+device-discovery = { path = "services/device-discovery" }
+companion-hub = { path = "services/companion-hub" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+log = "0.4"
+uuid = { version = "1", features = ["v4", "serde"] }
+time = { version = "0.3", features = ["formatting", "macros", "local-offset"] }
+parking_lot = "0.12"
+crossbeam-channel = "0.5"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = "debuginfo"

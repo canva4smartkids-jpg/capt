@@ -1,0 +1,13 @@
+[package]
+name = "captureone-cli"
+description = "Headless CaptureOne recorder used for automated verification"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "captureone-cli"
+path = "src/main.rs"
+
+[dependencies]
+capture-core.workspace = true

@@ -1,0 +1,15 @@
+{
+  "$comment": "Single source of truth for encoding presets. Consumed by TypeScript (packages/settings), Rust (native/media-engine via include_str!) and Kotlin (native/android-capture, copied at build time). Bitrate = width * height * fps * bitsPerPixel, clamped.",
+  "version": 1,
+  "bitsPerPixel": {
+    "h264": { "low": 0.05, "medium": 0.08, "high": 0.12, "ultra": 0.18 },
+    "h265": { "low": 0.03, "medium": 0.05, "high": 0.075, "ultra": 0.11 }
+  },
+  "minBitrateKbps": 500,
+  "maxBitrateKbps": 100000,
+  "containerOverhead": 0.02,
+  "resolutionHeights": [2160, 1440, 1080, 720, 480],
+  "frameRates": [24, 30, 60],
+  "audioBitratesKbps": [96, 128, 160, 192, 256],
+  "defaultAudioBitrateKbps": 160
+}

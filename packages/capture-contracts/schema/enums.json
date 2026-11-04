@@ -1,0 +1,107 @@
+{
+  "Platform": [
+    "windows",
+    "macos",
+    "linux",
+    "android",
+    "android-tv",
+    "google-tv",
+    "tizen",
+    "webos",
+    "other-tv"
+  ],
+  "SupportLevel": [
+    "native",
+    "partial",
+    "companion-only",
+    "external-hardware",
+    "unsupported"
+  ],
+  "FeatureKey": [
+    "screenshot",
+    "displayCapture",
+    "windowCapture",
+    "regionCapture",
+    "multiDisplay",
+    "videoRecording",
+    "pauseResume",
+    "cursorCapture",
+    "microphoneAudio",
+    "systemAudio",
+    "separateAudioTracks",
+    "h264",
+    "h265",
+    "hardwareEncoding",
+    "globalShortcuts",
+    "recordingHistory",
+    "share",
+    "hdmiCaptureDevice",
+    "remoteControl",
+    "deviceDiscovery",
+    "tvNativeScreenshot",
+    "fileTransfer"
+  ],
+  "PermissionKind": [
+    "screenCapture",
+    "microphone",
+    "systemAudio",
+    "storage",
+    "notifications",
+    "localNetwork"
+  ],
+  "PermissionState": [
+    "granted",
+    "denied",
+    "prompt",
+    "restricted",
+    "not-applicable",
+    "per-session"
+  ],
+  "CaptureErrorCode": [
+    "PERMISSION_DENIED",
+    "UNSUPPORTED",
+    "SOURCE_NOT_FOUND",
+    "SOURCE_CLOSED",
+    "ENCODER_UNAVAILABLE",
+    "ENCODER_FAILED",
+    "STORAGE_FULL",
+    "IO_ERROR",
+    "INVALID_CONFIG",
+    "INVALID_STATE",
+    "DRM_PROTECTED",
+    "INTERRUPTED",
+    "DEVICE_BUSY",
+    "NETWORK",
+    "INTERNAL"
+  ],
+  "RecordingState": [
+    "idle",
+    "countdown",
+    "starting",
+    "recording",
+    "paused",
+    "stopping",
+    "finalizing",
+    "completed",
+    "failed"
+  ],
+  "DeviceKind": [
+    "desktop",
+    "android-phone",
+    "android-tablet",
+    "android-tv",
+    "google-tv",
+    "samsung-tizen-tv",
+    "lg-webos-tv",
+    "other-tv",
+    "unknown"
+  ],
+  "ControlProtocol": [
+    "captureone-companion",
+    "lg-ssap",
+    "samsung-remote-ws",
+    "android-tv-remote",
+    "dial",
+    "upnp-media-renderer"
+  ]
+}

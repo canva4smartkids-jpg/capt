@@ -1,0 +1,38 @@
+{
+  "idle": [
+    "countdown",
+    "starting"
+  ],
+  "countdown": [
+    "starting",
+    "idle"
+  ],
+  "starting": [
+    "recording",
+    "failed"
+  ],
+  "recording": [
+    "paused",
+    "stopping",
+    "failed"
+  ],
+  "paused": [
+    "recording",
+    "stopping",
+    "failed"
+  ],
+  "stopping": [
+    "finalizing",
+    "failed"
+  ],
+  "finalizing": [
+    "completed",
+    "failed"
+  ],
+  "completed": [
+    "idle"
+  ],
+  "failed": [
+    "idle"
+  ]
+}

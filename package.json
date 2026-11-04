@@ -1,0 +1,28 @@
+{
+  "name": "captureone",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CaptureOne \u2014 cross-platform screen capture and recording (monorepo)",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:packages": "pnpm -r --filter \"./packages/*\" run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "schema": "pnpm --filter @captureone/capture-contracts run schema"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.0",
+    "tsx": "^4.23.15",
+    "@types/node": "^22.10.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

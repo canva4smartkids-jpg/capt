@@ -1,0 +1,46 @@
+{
+  "$id": "https://captureone.dev/schema/CaptureError.json",
+  "title": "CaptureError",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": [
+        "PERMISSION_DENIED",
+        "UNSUPPORTED",
+        "SOURCE_NOT_FOUND",
+        "SOURCE_CLOSED",
+        "ENCODER_UNAVAILABLE",
+        "ENCODER_FAILED",
+        "STORAGE_FULL",
+        "IO_ERROR",
+        "INVALID_CONFIG",
+        "INVALID_STATE",
+        "DRM_PROTECTED",
+        "INTERRUPTED",
+        "DEVICE_BUSY",
+        "NETWORK",
+        "INTERNAL"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "recoverable": {
+      "type": "boolean"
+    },
+    "details": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "recoverable"
+  ]
+}

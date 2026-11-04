@@ -1,0 +1,9 @@
+[package]
+name = "windows-capture-backend"
+description = "Windows Graphics Capture backend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+capture-core.workspace = true

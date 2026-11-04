@@ -1,0 +1,37 @@
+{
+  "name": "@captureone/settings",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Settings schema, defaults, quality presets, resolution and file-size estimation shared by all CaptureOne clients.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./presets.json": "./presets.json"
+  },
+  "files": [
+    "src",
+    "schema",
+    "presets.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "fixtures": "tsx scripts/export-fixtures.ts"
+  },
+  "dependencies": {
+    "@captureone/capture-contracts": "workspace:*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.0",
+    "tsx": "^4.23.15",
+    "@types/node": "^22.10.0"
+  }
+}

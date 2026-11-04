@@ -1,0 +1,9 @@
+[package]
+name = "media-engine"
+description = "Encoding, muxing, A/V sync, validation and recording orchestration for CaptureOne desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+capture-core.workspace = true

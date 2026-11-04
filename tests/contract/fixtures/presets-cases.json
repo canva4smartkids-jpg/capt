@@ -1,0 +1,1778 @@
+{
+  "resolution": [
+    {
+      "source": {
+        "width": 1920,
+        "height": 1080
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "source": {
+        "width": 1920,
+        "height": 1080
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "source": {
+        "width": 1920,
+        "height": 1080
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "source": {
+        "width": 1920,
+        "height": 1080
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 1920,
+        "height": 1080
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 852,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 1920,
+        "height": 1080
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 1920,
+        "height": 1080
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 640,
+        "height": 360
+      }
+    },
+    {
+      "source": {
+        "width": 2560,
+        "height": 1440
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 2560,
+        "height": 1440
+      }
+    },
+    {
+      "source": {
+        "width": 2560,
+        "height": 1440
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 2560,
+        "height": 1440
+      }
+    },
+    {
+      "source": {
+        "width": 2560,
+        "height": 1440
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "source": {
+        "width": 2560,
+        "height": 1440
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 2560,
+        "height": 1440
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 852,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 2560,
+        "height": 1440
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 2560,
+        "height": 1440
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 640,
+        "height": 360
+      }
+    },
+    {
+      "source": {
+        "width": 3840,
+        "height": 2160
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 3840,
+        "height": 2160
+      }
+    },
+    {
+      "source": {
+        "width": 3840,
+        "height": 2160
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 3840,
+        "height": 2160
+      }
+    },
+    {
+      "source": {
+        "width": 3840,
+        "height": 2160
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "source": {
+        "width": 3840,
+        "height": 2160
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 3840,
+        "height": 2160
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 852,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 3840,
+        "height": 2160
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 3840,
+        "height": 2160
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 640,
+        "height": 360
+      }
+    },
+    {
+      "source": {
+        "width": 1366,
+        "height": 768
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 1366,
+        "height": 768
+      }
+    },
+    {
+      "source": {
+        "width": 1366,
+        "height": 768
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 1366,
+        "height": 768
+      }
+    },
+    {
+      "source": {
+        "width": 1366,
+        "height": 768
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 1366,
+        "height": 768
+      }
+    },
+    {
+      "source": {
+        "width": 1366,
+        "height": 768
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 1366,
+        "height": 768
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 854,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 1366,
+        "height": 768
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 1280,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 1366,
+        "height": 768
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 640,
+        "height": 360
+      }
+    },
+    {
+      "source": {
+        "width": 1279,
+        "height": 719
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 1278,
+        "height": 718
+      }
+    },
+    {
+      "source": {
+        "width": 1279,
+        "height": 719
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 1278,
+        "height": 718
+      }
+    },
+    {
+      "source": {
+        "width": 1279,
+        "height": 719
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 1278,
+        "height": 718
+      }
+    },
+    {
+      "source": {
+        "width": 1279,
+        "height": 719
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 1278,
+        "height": 718
+      }
+    },
+    {
+      "source": {
+        "width": 1279,
+        "height": 719
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 854,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 1279,
+        "height": 719
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 1278,
+        "height": 718
+      }
+    },
+    {
+      "source": {
+        "width": 1279,
+        "height": 719
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 640,
+        "height": 360
+      }
+    },
+    {
+      "source": {
+        "width": 3024,
+        "height": 1964
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 3024,
+        "height": 1964
+      }
+    },
+    {
+      "source": {
+        "width": 3024,
+        "height": 1964
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 3024,
+        "height": 1964
+      }
+    },
+    {
+      "source": {
+        "width": 3024,
+        "height": 1964
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 1662,
+        "height": 1080
+      }
+    },
+    {
+      "source": {
+        "width": 3024,
+        "height": 1964
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 1108,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 3024,
+        "height": 1964
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 738,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 3024,
+        "height": 1964
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 1108,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 3024,
+        "height": 1964
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 640,
+        "height": 416
+      }
+    },
+    {
+      "source": {
+        "width": 1080,
+        "height": 2400
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 1080,
+        "height": 2400
+      }
+    },
+    {
+      "source": {
+        "width": 1080,
+        "height": 2400
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 972,
+        "height": 2160
+      }
+    },
+    {
+      "source": {
+        "width": 1080,
+        "height": 2400
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 486,
+        "height": 1080
+      }
+    },
+    {
+      "source": {
+        "width": 1080,
+        "height": 2400
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 324,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 1080,
+        "height": 2400
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 216,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 1080,
+        "height": 2400
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 324,
+        "height": 720
+      }
+    },
+    {
+      "source": {
+        "width": 1080,
+        "height": 2400
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 288,
+        "height": 640
+      }
+    },
+    {
+      "source": {
+        "width": 801,
+        "height": 601
+      },
+      "setting": {
+        "mode": "source"
+      },
+      "expected": {
+        "width": 800,
+        "height": 600
+      }
+    },
+    {
+      "source": {
+        "width": 801,
+        "height": 601
+      },
+      "setting": {
+        "mode": "height",
+        "height": 2160
+      },
+      "expected": {
+        "width": 800,
+        "height": 600
+      }
+    },
+    {
+      "source": {
+        "width": 801,
+        "height": 601
+      },
+      "setting": {
+        "mode": "height",
+        "height": 1080
+      },
+      "expected": {
+        "width": 800,
+        "height": 600
+      }
+    },
+    {
+      "source": {
+        "width": 801,
+        "height": 601
+      },
+      "setting": {
+        "mode": "height",
+        "height": 720
+      },
+      "expected": {
+        "width": 800,
+        "height": 600
+      }
+    },
+    {
+      "source": {
+        "width": 801,
+        "height": 601
+      },
+      "setting": {
+        "mode": "height",
+        "height": 480
+      },
+      "expected": {
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "source": {
+        "width": 801,
+        "height": 601
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 1280,
+        "height": 720
+      },
+      "expected": {
+        "width": 800,
+        "height": 600
+      }
+    },
+    {
+      "source": {
+        "width": 801,
+        "height": 601
+      },
+      "setting": {
+        "mode": "custom",
+        "width": 640,
+        "height": 640
+      },
+      "expected": {
+        "width": 640,
+        "height": 480
+      }
+    }
+  ],
+  "bitrate": [
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 1106
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 1769
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 2654
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 3981
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 664
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 1106
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 1659
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 2433
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 1382
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 2212
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 3318
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 4977
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 829
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 1382
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 2074
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 3041
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 2765
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 4424
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 6636
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 9953
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 1659
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 2765
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 4147
+    },
+    {
+      "size": {
+        "width": 1280,
+        "height": 720
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 6083
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 2488
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 3981
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 5972
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 8958
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 1493
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 2488
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 3732
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 5474
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 3110
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 4977
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 7465
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 11197
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 1866
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 3110
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 4666
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 6843
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 6221
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 9953
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 14930
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 22395
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 3732
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 6221
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 9331
+    },
+    {
+      "size": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 13686
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 9953
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 15925
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 23888
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 35832
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 5972
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 9953
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 14930
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 21897
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 12442
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 19907
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 29860
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 44790
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 7465
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 12442
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 18662
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 27372
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 24883
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 39813
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 59720
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 89580
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 14930
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 24883
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 37325
+    },
+    {
+      "size": {
+        "width": 3840,
+        "height": 2160
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 54743
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 24,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 30,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "low",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "medium",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "high",
+      "expectedKbps": 553
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h264",
+      "quality": "ultra",
+      "expectedKbps": 829
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "low",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "medium",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "high",
+      "expectedKbps": 500
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 240
+      },
+      "fps": 60,
+      "codec": "h265",
+      "quality": "ultra",
+      "expectedKbps": 507
+    }
+  ],
+  "fileSize": [
+    {
+      "videoKbps": 5000,
+      "audioKbps": 160,
+      "durationSec": 60,
+      "expectedBytes": 39474000
+    },
+    {
+      "videoKbps": 30000,
+      "audioKbps": 320,
+      "durationSec": 3600,
+      "expectedBytes": 13916880000
+    },
+    {
+      "videoKbps": 500,
+      "audioKbps": 0,
+      "durationSec": 1,
+      "expectedBytes": 63750
+    }
+  ]
+}

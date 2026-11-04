@@ -1,0 +1,7 @@
+packages:
+  - "packages/*"
+  - "apps/desktop"
+  - "apps/samsung-tv"
+  - "apps/lg-tv"
+  - "apps/tv-web"
+  - "tests"

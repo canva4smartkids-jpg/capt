@@ -1,0 +1,145 @@
+{
+  "$id": "https://captureone.dev/schema/ScreenshotRequest.json",
+  "title": "ScreenshotRequest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "display"
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "displayId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "window"
+            },
+            "windowId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "windowId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "region"
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rect": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "y": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "width": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "height": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "x",
+                "y",
+                "width",
+                "height"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "displayId",
+            "rect"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "device"
+            },
+            "deviceId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "deviceId"
+          ]
+        }
+      ]
+    },
+    "format": {
+      "default": "png",
+      "type": "string",
+      "enum": [
+        "png",
+        "jpeg"
+      ]
+    },
+    "jpegQuality": {
+      "default": 90,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "outputDirectory": {
+      "type": "string"
+    },
+    "fileNameTemplate": {
+      "type": "string"
+    },
+    "showCursor": {
+      "default": true,
+      "type": "boolean"
+    },
+    "delaySec": {
+      "default": 0,
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 30
+    }
+  },
+  "required": [
+    "target"
+  ]
+}

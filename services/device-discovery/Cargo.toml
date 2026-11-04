@@ -1,0 +1,9 @@
+[package]
+name = "device-discovery"
+description = "LAN discovery and control of TVs (SSDP, mDNS, LG SSAP, Samsung remote)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+capture-core.workspace = true

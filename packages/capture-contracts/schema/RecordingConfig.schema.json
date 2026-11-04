@@ -1,0 +1,425 @@
+{
+  "$id": "https://captureone.dev/schema/RecordingConfig.json",
+  "title": "RecordingConfig",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "display"
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "displayId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "window"
+            },
+            "windowId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "windowId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "region"
+            },
+            "displayId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rect": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "y": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "width": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "height": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "x",
+                "y",
+                "width",
+                "height"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "displayId",
+            "rect"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "device"
+            },
+            "deviceId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "deviceId"
+          ]
+        }
+      ]
+    },
+    "video": {
+      "type": "object",
+      "properties": {
+        "codec": {
+          "type": "string",
+          "enum": [
+            "h264",
+            "h265"
+          ]
+        },
+        "resolution": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "source"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "height"
+                },
+                "height": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "const": 2160
+                    },
+                    {
+                      "type": "number",
+                      "const": 1440
+                    },
+                    {
+                      "type": "number",
+                      "const": 1080
+                    },
+                    {
+                      "type": "number",
+                      "const": 720
+                    },
+                    {
+                      "type": "number",
+                      "const": 480
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "mode",
+                "height"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "custom"
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 16,
+                  "maximum": 7680
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 16,
+                  "maximum": 4320
+                }
+              },
+              "required": [
+                "mode",
+                "width",
+                "height"
+              ]
+            }
+          ]
+        },
+        "fps": {
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 24
+            },
+            {
+              "type": "number",
+              "const": 30
+            },
+            {
+              "type": "number",
+              "const": 60
+            }
+          ]
+        },
+        "quality": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "ultra",
+            "custom"
+          ]
+        },
+        "bitrateKbps": {
+          "type": "integer",
+          "minimum": 250,
+          "maximum": 200000
+        },
+        "keyframeIntervalSec": {
+          "default": 2,
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "hardwareAcceleration": {
+          "default": "auto",
+          "type": "string",
+          "enum": [
+            "auto",
+            "prefer",
+            "off"
+          ]
+        },
+        "showCursor": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "codec",
+        "resolution",
+        "fps",
+        "quality"
+      ]
+    },
+    "audio": {
+      "type": "object",
+      "properties": {
+        "microphone": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "deviceId": {
+              "type": "string"
+            },
+            "gain": {
+              "default": 1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
+        "system": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "deviceId": {
+              "type": "string"
+            },
+            "gain": {
+              "default": 1,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
+        "trackMode": {
+          "default": "mixed",
+          "type": "string",
+          "enum": [
+            "mixed",
+            "separate"
+          ]
+        },
+        "sampleRate": {
+          "default": 48000,
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 44100
+            },
+            {
+              "type": "number",
+              "const": 48000
+            }
+          ]
+        },
+        "bitrateKbps": {
+          "default": 160,
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 96
+            },
+            {
+              "type": "number",
+              "const": 128
+            },
+            {
+              "type": "number",
+              "const": 160
+            },
+            {
+              "type": "number",
+              "const": 192
+            },
+            {
+              "type": "number",
+              "const": 256
+            }
+          ]
+        }
+      },
+      "required": [
+        "microphone",
+        "system"
+      ]
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fileNameTemplate": {
+          "default": "CaptureOne {date} {time}",
+          "type": "string",
+          "minLength": 1
+        },
+        "container": {
+          "default": "mp4",
+          "type": "string",
+          "const": "mp4"
+        }
+      },
+      "required": [
+        "directory"
+      ]
+    },
+    "limits": {
+      "default": {
+        "minFreeDiskMb": 500
+      },
+      "type": "object",
+      "properties": {
+        "maxDurationSec": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxFileSizeMb": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "minFreeDiskMb": {
+          "default": 500,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "countdownSec": {
+      "default": 3,
+      "anyOf": [
+        {
+          "type": "number",
+          "const": 0
+        },
+        {
+          "type": "number",
+          "const": 3
+        },
+        {
+          "type": "number",
+          "const": 5
+        },
+        {
+          "type": "number",
+          "const": 10
+        }
+      ]
+    }
+  },
+  "required": [
+    "target",
+    "video",
+    "audio",
+    "output"
+  ]
+}

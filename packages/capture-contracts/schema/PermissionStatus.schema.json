@@ -1,0 +1,41 @@
+{
+  "$id": "https://captureone.dev/schema/PermissionStatus.json",
+  "title": "PermissionStatus",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "screenCapture",
+        "microphone",
+        "systemAudio",
+        "storage",
+        "notifications",
+        "localNetwork"
+      ]
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "granted",
+        "denied",
+        "prompt",
+        "restricted",
+        "not-applicable",
+        "per-session"
+      ]
+    },
+    "requiresSystemSettings": {
+      "default": false,
+      "type": "boolean"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "state"
+  ]
+}

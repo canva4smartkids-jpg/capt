@@ -1,0 +1,87 @@
+{
+  "$id": "https://captureone.dev/schema/DiscoveredDevice.json",
+  "title": "DiscoveredDevice",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "desktop",
+        "android-phone",
+        "android-tablet",
+        "android-tv",
+        "google-tv",
+        "samsung-tizen-tv",
+        "lg-webos-tv",
+        "other-tv",
+        "unknown"
+      ]
+    },
+    "manufacturer": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "port": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "discoveredVia": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ssdp",
+          "mdns",
+          "manual"
+        ]
+      }
+    },
+    "controlProtocols": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "captureone-companion",
+          "lg-ssap",
+          "samsung-remote-ws",
+          "android-tv-remote",
+          "dial",
+          "upnp-media-renderer"
+        ]
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lastSeen": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "kind",
+    "address",
+    "discoveredVia",
+    "controlProtocols",
+    "services",
+    "lastSeen"
+  ]
+}
