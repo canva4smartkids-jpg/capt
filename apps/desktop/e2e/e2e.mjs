@@ -198,7 +198,14 @@ async function main() {
   const size = await exec(`return document.querySelector('.region-size')?.textContent ?? null;`);
   log("region dragged", { size });
   await shot("region", { root: true });
-  await key("\uE007"); // Enter
+  // Enter confirms the selection and closes the region window, so WebKitWebDriver may answer
+  // the key action with "no such window" — that is the expected outcome, not a failure.
+  try {
+    await key("\uE007"); // Enter
+  } catch (e) {
+    if (!String(e).includes("no such window")) throw e;
+    log("region window closed on confirm");
+  }
   await wd("POST", s("/window"), { handle: mainHandle });
   const regionText = await waitFor("region summary", () => exec(`return document.querySelector('.region-summary__size')?.textContent ?? null;`), 15_000);
   log("region selected", { regionText });
