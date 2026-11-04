@@ -8,6 +8,7 @@ mod commands;
 pub mod hub;
 pub mod events;
 pub mod library;
+mod media_server;
 mod platform;
 mod recording;
 pub mod region;
@@ -25,7 +26,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, WindowEvent};
 
-pub use commands::COMMANDS;
+pub use commands::{COMMANDS, EXTRA_COMMANDS};
 
 pub fn run() {
     let result = tauri::Builder::default()
@@ -76,6 +77,7 @@ pub fn run() {
             commands::tv_pair,
             commands::tv_send_key,
             commands::tv_screenshot,
+            commands::media_stream_url,
         ])
         .run(tauri::generate_context!());
     if let Err(e) = result {

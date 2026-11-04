@@ -37,6 +37,8 @@ const COMMANDS: &[&str] = &[
     "tv_pair",
     "tv_send_key",
     "tv_screenshot",
+    // additive (not yet in the TS contract)
+    "media_stream_url",
 ];
 
 fn main() {

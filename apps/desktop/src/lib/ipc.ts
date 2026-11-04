@@ -26,11 +26,14 @@ import { z } from "zod";
 
 /**
  * Additive, backwards-compatible extensions over the contract (proposed upstream):
- * `library_rename` accepts an optional `renameFile` flag; omitting it keeps the
- * contract behaviour (title only).
+ * - `library_rename` accepts an optional `renameFile` flag; omitting it keeps the
+ *   contract behaviour (title only).
+ * - `media_stream_url` returns a URL for `<video>` previews where the asset protocol
+ *   cannot stream media (WebKitGTK on Linux), or null to use the asset protocol.
  */
 export interface DesktopCommandExtensions {
   library_rename: [CommandArgs<"library_rename"> & { renameFile?: boolean }, MediaMetadata];
+  media_stream_url: [{ id: string }, string | null];
 }
 
 export type AppCommands = Omit<DesktopCommands, keyof DesktopCommandExtensions> & DesktopCommandExtensions;
@@ -64,6 +67,7 @@ const PARSERS: { [C in AppCommand]?: (raw: unknown) => AppResult<C> } = {
   library_validate: (r) => MediaMetadata.parse(r),
   recover_recordings: (r) => mediaList.parse(r),
   tv_screenshot: (r) => MediaMetadata.parse(r),
+  media_stream_url: (r) => z.url().startsWith("http://127.0.0.1:").nullable().parse(r),
 };
 
 /** Type-checked `invoke`. Rejects with `CaptureFailure`. */

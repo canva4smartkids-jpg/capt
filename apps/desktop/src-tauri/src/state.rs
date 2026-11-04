@@ -109,6 +109,8 @@ pub struct AppCore {
     /// Connected (paired) TV control sessions, keyed by device id.
     pub tv_clients: Mutex<HashMap<String, Arc<Mutex<device_discovery::TvClient>>>>,
     pub tv_store: Mutex<Option<Arc<device_discovery::CredentialStore>>>,
+    /// Loopback media endpoint for `<video>` previews on Linux (see media_server.rs).
+    pub media_server: Mutex<Option<crate::media_server::MediaServerInfo>>,
 }
 
 impl AppCore {
@@ -132,6 +134,7 @@ impl AppCore {
             discovered: Mutex::new(HashMap::new()),
             tv_clients: Mutex::new(HashMap::new()),
             tv_store: Mutex::new(None),
+            media_server: Mutex::new(None),
         }
     }
 

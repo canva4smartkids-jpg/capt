@@ -356,6 +356,26 @@ pub async fn tv_screenshot(app: AppHandle, state: State<'_, Shared>, device_id: 
     blocking(move || crate::tv::screenshot(Some(&app), &core, &device_id)).await
 }
 
+/// Additive (proposed) command: URL the preview `<video>` should load. On Linux, WebKitGTK
+/// cannot play media from the `asset://` scheme, so a loopback endpoint is used; elsewhere
+/// this returns null and the UI uses the asset protocol.
+#[tauri::command]
+pub async fn media_stream_url(state: State<'_, Shared>, id: String) -> Cmd<Option<String>> {
+    if !cfg!(target_os = "linux") {
+        return Ok(None);
+    }
+    let core = state.inner().clone();
+    blocking(move || {
+        core.library.lock().get(&id)?.ok_or_else(|| CaptureError::new(CaptureErrorCode::SourceNotFound, "library item not found"))?;
+        let info = crate::media_server::ensure(&core)?;
+        Ok(Some(crate::media_server::url_for(&info, &id)))
+    })
+    .await
+}
+
+/// Commands beyond the contract (proposed upstream; see the desktop report).
+pub const EXTRA_COMMANDS: &[&str] = &["media_stream_url"];
+
 /// Command names, in contract order (used by build.rs ACL generation and tests).
 pub const COMMANDS: &[&str] = &[
     "get_capabilities",
@@ -415,7 +435,7 @@ mod tests {
         ours.sort();
         assert_eq!(ours, contract);
         let build_rs = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/build.rs")).unwrap();
-        for c in COMMANDS {
+        for c in COMMANDS.iter().chain(super::EXTRA_COMMANDS) {
             assert!(build_rs.contains(&format!("\"{c}\"")), "build.rs ACL list misses {c}");
         }
     }

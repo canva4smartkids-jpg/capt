@@ -506,12 +506,34 @@ function MediaTable({ items, busyIds, renaming, actions }: { items: MediaMetadat
   );
 }
 
+/** Video preview source: loopback stream where the asset protocol cannot stream media (Linux), else asset URL. */
+function useVideoSrc(m: MediaMetadata | null): string | undefined | null {
+  const [src, setSrc] = useState<string | undefined | null>(null);
+  useEffect(() => {
+    if (!m) return;
+    if (m.kind !== "video") {
+      setSrc(assetUrl(m.path));
+      return;
+    }
+    let live = true;
+    setSrc(null);
+    invoke("media_stream_url", { id: m.id })
+      .then((url) => live && setSrc(url ?? assetUrl(m.path)))
+      .catch(() => live && setSrc(assetUrl(m.path)));
+    return () => {
+      live = false;
+    };
+  }, [m]);
+  return src;
+}
+
 function PreviewDialog({ m, onClose, actions, busy }: { m: MediaMetadata | null; onClose: () => void; actions: ItemActions; busy: boolean }) {
   const [mediaError, setMediaError] = useState(false);
   useEffect(() => setMediaError(false), [m?.id]);
+  const streamSrc = useVideoSrc(m);
   if (!m) return null;
   const badge = validationBadge(m);
-  const src = assetUrl(m.path);
+  const src = streamSrc ?? undefined;
   return (
     <Dialog
       open
@@ -538,7 +560,9 @@ function PreviewDialog({ m, onClose, actions, busy }: { m: MediaMetadata | null;
     >
       <div className="preview">
         <div className="preview__media">
-          {mediaError || !src ? (
+          {streamSrc === null ? (
+            <Spinner size={22} label="Loading preview" />
+          ) : mediaError || !src ? (
             <EmptyState icon="alert" title="Preview unavailable" description="The file could not be loaded. It may have been moved or deleted, or the system lacks a decoder for it." />
           ) : m.kind === "video" ? (
             <video key={m.id} src={src} controls preload="metadata" onError={() => setMediaError(true)} aria-label={`Video preview of ${displayTitle(m)}`} />
