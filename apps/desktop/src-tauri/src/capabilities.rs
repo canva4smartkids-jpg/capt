@@ -2,7 +2,6 @@
 //! the app itself implements (global shortcuts, history) and features that depend
 //! on services not integrated in this build (companion hub, discovery).
 
-use crate::events::HUB_NOT_INTEGRATED;
 use capture_core::*;
 
 pub fn with_app_features(mut r: CapabilityReport, app_version: &str) -> CapabilityReport {
@@ -18,9 +17,15 @@ pub fn with_app_features(mut r: CapabilityReport, app_version: &str) -> Capabili
     r.features.insert(FeatureKey::GlobalShortcuts, shortcuts);
     r.features.insert(FeatureKey::RecordingHistory, FeatureSupport::native());
     r.features.entry(FeatureKey::Share).or_insert_with(|| FeatureSupport::unsupported("Use Export or Show in folder to share files."));
-    for key in [FeatureKey::RemoteControl, FeatureKey::DeviceDiscovery, FeatureKey::FileTransfer, FeatureKey::TvNativeScreenshot] {
-        r.features.insert(key, FeatureSupport::unsupported(HUB_NOT_INTEGRATED));
+    // TV discovery/control/screenshot levels come from device-discovery (honest: partial/experimental).
+    for (key, support) in device_discovery::desktop_tv_features() {
+        r.features.insert(key, support);
     }
+    r.features.insert(
+        FeatureKey::FileTransfer,
+        FeatureSupport::with(SupportLevel::Partial, "Paired TV/phone companions on the same network can browse and stream recordings while the companion hub is on.")
+            .requires(vec![PermissionKind::LocalNetwork]),
+    );
     r
 }
 
@@ -49,8 +54,10 @@ mod tests {
         let r = with_app_features(base, "0.1.0");
         assert_eq!(r.app_version, "0.1.0");
         assert!(r.is_usable(FeatureKey::RecordingHistory));
-        assert_eq!(r.level(FeatureKey::DeviceDiscovery), SupportLevel::Unsupported);
-        assert_eq!(r.features[&FeatureKey::RemoteControl].reason.as_deref(), Some(HUB_NOT_INTEGRATED));
+        assert_eq!(r.level(FeatureKey::DeviceDiscovery), SupportLevel::Partial);
+        assert_eq!(r.level(FeatureKey::TvNativeScreenshot), SupportLevel::Partial);
+        assert!(r.features[&FeatureKey::TvNativeScreenshot].reason.as_deref().unwrap().contains("undocumented"));
+        assert_eq!(r.level(FeatureKey::FileTransfer), SupportLevel::Partial);
         if cfg!(target_os = "linux") {
             assert_eq!(r.level(FeatureKey::GlobalShortcuts), SupportLevel::Partial);
         }

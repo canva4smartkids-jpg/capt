@@ -106,13 +106,6 @@ pub struct TvPairResult {
     pub message: String,
 }
 
-pub const HUB_NOT_INTEGRATED: &str = "Companion hub is not integrated in this build";
-
-/// Rejection used by every hub/discovery/TV command until the companion services are wired in.
-pub fn hub_not_integrated() -> CaptureError {
-    CaptureError { code: CaptureErrorCode::Unsupported, message: HUB_NOT_INTEGRATED.into(), recoverable: false, details: None }
-}
-
 pub fn emit_capture(app: &tauri::AppHandle, event: CaptureEvent) {
     use tauri::Emitter;
     if let Err(e) = app.emit(CAPTURE_EVENT, &event) {
@@ -212,9 +205,9 @@ mod tests {
 
     #[test]
     fn errors_serialize_as_contract_capture_error() {
-        let e = hub_not_integrated();
+        let e = CaptureError::unsupported("Samsung TVs have no screenshot API");
         let v = serde_json::to_value(&e).unwrap();
-        assert_eq!(v, json!({ "code": "UNSUPPORTED", "message": "Companion hub is not integrated in this build", "recoverable": false }));
+        assert_eq!(v, json!({ "code": "UNSUPPORTED", "message": "Samsung TVs have no screenshot API", "recoverable": false }));
         assert_valid("CaptureError", &v);
         let io: CaptureError = std::io::Error::from_raw_os_error(28).into();
         assert_valid("CaptureError", &serde_json::to_value(io.with_detail("path", "/v")).unwrap());
@@ -245,6 +238,23 @@ mod tests {
         let h = serde_json::to_value(HubStatus { enabled: false, url: None, pairing_code: None, paired_devices: vec![PairedDeviceInfo { name: "TV".into(), device_kind: "lg-webos-tv".into(), paired_at: "t".into() }] }).unwrap();
         assert_eq!(h, json!({ "enabled": false, "url": null, "pairingCode": null, "pairedDevices": [{ "name": "TV", "deviceKind": "lg-webos-tv", "pairedAt": "t" }] }));
         assert_eq!(serde_json::to_value(ShortcutPayload { action: ShortcutAction::RegionScreenshot }).unwrap(), json!({ "action": "region-screenshot" }));
+        assert_eq!(serde_json::to_value(TvPairResult { paired: false, message: "declined".into() }).unwrap(), json!({ "paired": false, "message": "declined" }));
+        let key: device_discovery::TvRemoteKey = serde_json::from_value(json!("VOLUME_UP")).unwrap();
+        assert_eq!(key, device_discovery::TvRemoteKey::VolumeUp);
+        let d = device_discovery::DiscoveredDevice {
+            id: "lg:1".into(),
+            name: "Living room".into(),
+            kind: device_discovery::DeviceKind::LgWebosTv,
+            manufacturer: Some("LG".into()),
+            model: None,
+            address: "192.168.1.30".into(),
+            port: Some(3001),
+            discovered_via: vec![device_discovery::DiscoveredVia::Ssdp],
+            control_protocols: vec![device_discovery::ControlProtocol::LgSsap],
+            services: vec![],
+            last_seen: "2026-11-04T10:00:00Z".into(),
+        };
+        assert_valid("DiscoveredDevice", &serde_json::to_value(&d).unwrap());
     }
 
     #[test]

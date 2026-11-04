@@ -126,7 +126,7 @@ CI; nothing has run on a device or emulator here (no KVM).
 | AndroidX (core, activity, lifecycle, Compose BOM 2025.06.01, Material 3, tv-material 1.0.0, media3 1.6.1, test) | Apache-2.0 |
 | Kotlin stdlib, kotlinx-coroutines 1.10.2, kotlinx-serialization 1.9.0 | Apache-2.0 |
 | OkHttp / MockWebServer 4.12.0 (Okio) | Apache-2.0 |
-| JUnit 4.13.2 (tests) | EPL-1.0 |
+| JUnit 4.13.2 (tests), Hamcrest 1.3 | EPL-1.0, BSD-3-Clause |
 | networknt json-schema-validator 1.5.6 (tests; Jackson) | Apache-2.0 |
 | JetBrains Compose for Desktop 1.8.2 (host-mode type-check only, never shipped) | Apache-2.0 |
 | Android Gradle Plugin 8.13.0, Gradle 8.14.3 wrapper | Apache-2.0 |

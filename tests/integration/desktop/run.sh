@@ -59,10 +59,22 @@ fi
 xdpyinfo | grep -E "dimensions|depth of root" >&2
 
 # --- PulseAudio: null sink as default output, its monitor as default input -------------
+if [ -z "${XDG_RUNTIME_DIR:-}" ] || [ ! -w "${XDG_RUNTIME_DIR}" ]; then
+  export XDG_RUNTIME_DIR="$CAPTUREONE_TEST_WORK/xdg-runtime"
+  mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
+fi
 if ! pactl info >/dev/null 2>&1; then
-  pulseaudio -D --exit-idle-time=-1 --disallow-exit 2>/dev/null || pulseaudio -D --exit-idle-time=-1
+  if ! pulseaudio -D --exit-idle-time=-1 --disallow-exit --log-target=file:"$CAPTUREONE_TEST_WORK/pulseaudio.log"; then
+    echo "pulseaudio failed to start:" >&2
+    tail -n 30 "$CAPTUREONE_TEST_WORK/pulseaudio.log" >&2 || true
+    exit 1
+  fi
   STARTED_PULSE=1
   for _ in $(seq 50); do pactl info >/dev/null 2>&1 && break; sleep 0.1; done
+fi
+# cpal opens ALSA's "default" PCM; on CI make sure it is routed to PulseAudio.
+if [ -n "${CI:-}" ] && [ ! -e "$HOME/.asoundrc" ]; then
+  printf 'pcm.!default { type pulse }\nctl.!default { type pulse }\n' > "$HOME/.asoundrc"
 fi
 PREV_SINK="$(pactl info 2>/dev/null | sed -n 's/^Default Sink: //p')"
 PREV_SOURCE="$(pactl info 2>/dev/null | sed -n 's/^Default Source: //p')"

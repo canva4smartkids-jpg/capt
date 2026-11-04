@@ -177,6 +177,7 @@ impl RecorderListener for Listener {
             }
         }
         tray::refresh(&self.app, &self.core);
+        self.core.hub_status_changed(true);
     }
 
     fn on_status(&self, status: &RecordingStatus) {
@@ -184,6 +185,7 @@ impl RecorderListener for Listener {
         st.session_id = self.ctl.id.clone();
         tray::tooltip(&self.app, st.state, st.elapsed_ms);
         emit_capture(&self.app, CaptureEvent::Status { status: st });
+        self.core.hub_status_changed(false);
     }
 
     fn on_warning(&self, _engine_session: &str, message: &str) {
@@ -205,6 +207,7 @@ impl RecorderListener for Listener {
             windows::show_main(&self.app);
         }
         tray::refresh(&self.app, &self.core);
+        self.core.hub_status_changed(true);
         let cancelled = self.ctl.cancel_requested.load(Ordering::SeqCst) && matches!(result, Err(e) if e.code == CaptureErrorCode::Interrupted);
         if cancelled {
             let from = set_phase(&self.ctl, RecordingState::Idle);
@@ -225,6 +228,7 @@ impl RecorderListener for Listener {
                 let body = format!("{} · {} · {}", stored.file_name, duration, format_bytes(stored.size_bytes));
                 notify(&self.app, if valid { "Recording saved" } else { "Recording saved with problems" }, &body);
                 emit_capture(&self.app, CaptureEvent::Completed { session_id: self.ctl.id.clone(), reason, media: stored });
+                self.core.library_changed();
             }
             Err(e) => {
                 let already = self.ctl.last_error.lock().as_ref() == Some(e);

@@ -143,13 +143,24 @@ pub async fn library_list(state: State<'_, Shared>) -> Cmd<Vec<MediaMetadata>> {
 #[tauri::command]
 pub async fn library_rename(state: State<'_, Shared>, id: String, title: String, rename_file: Option<bool>) -> Cmd<MediaMetadata> {
     let core = state.inner().clone();
-    blocking(move || core.library.lock().rename(&id, &title, rename_file.unwrap_or(false))).await
+    let m = blocking(move || {
+        let m = core.library.lock().rename(&id, &title, rename_file.unwrap_or(false))?;
+        core.library_changed();
+        Ok(m)
+    })
+    .await?;
+    Ok(m)
 }
 
 #[tauri::command]
 pub async fn library_delete(state: State<'_, Shared>, id: String, delete_file: bool) -> Cmd<()> {
     let core = state.inner().clone();
-    blocking(move || core.library.lock().delete(&id, delete_file).map(|_| ())).await
+    blocking(move || {
+        core.library.lock().delete(&id, delete_file)?;
+        core.library_changed();
+        Ok(())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -213,6 +224,9 @@ pub fn recover(app: &AppHandle, core: &Shared) -> CaptureResult<Vec<MediaMetadat
                 emit_capture(app, CaptureEvent::Warning { session_id: None, message: format!("An interrupted recording could not be recovered: {}", e.message) });
             }
         }
+    }
+    if !out.is_empty() {
+        core.library_changed();
     }
     Ok(out)
 }
@@ -283,46 +297,63 @@ pub async fn get_diagnostics(state: State<'_, Shared>) -> Cmd<Diagnostics> {
     .await
 }
 
-// ------------------------------------------------------------------ companion hub / TVs (not integrated yet)
+// ------------------------------------------------------------------ companion hub / TVs
 
 #[tauri::command]
-pub fn hub_status() -> Cmd<HubStatus> {
-    Err(hub_not_integrated())
+pub async fn hub_status(state: State<'_, Shared>) -> Cmd<HubStatus> {
+    let core = state.inner().clone();
+    blocking(move || Ok(crate::hub::status(&core))).await
+}
+
+/// Starts/stops the LAN hub and persists the choice (`companionHubEnabled`).
+#[tauri::command]
+pub async fn hub_set_enabled(app: AppHandle, state: State<'_, Shared>, enabled: bool) -> Cmd<HubStatus> {
+    let core = state.inner().clone();
+    blocking(move || {
+        if enabled {
+            crate::hub::start(&core, Some(app.clone()), crate::hub::lan_config(&core))?;
+        } else {
+            crate::hub::stop(&core); // joins the server thread (can take a few seconds)
+        }
+        let mut s = core.settings();
+        if s.companion_hub_enabled != enabled {
+            s.companion_hub_enabled = enabled;
+            settings::save(&core.paths.config_dir, &s)?;
+            *core.settings.write() = s;
+        }
+        Ok(crate::hub::status(&core))
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn hub_set_enabled(enabled: bool) -> Cmd<HubStatus> {
-    let _ = enabled;
-    Err(hub_not_integrated())
+pub async fn hub_regenerate_code(state: State<'_, Shared>) -> Cmd<HubStatus> {
+    let core = state.inner().clone();
+    blocking(move || crate::hub::regenerate_code(&core)).await
 }
 
 #[tauri::command]
-pub fn hub_regenerate_code() -> Cmd<HubStatus> {
-    Err(hub_not_integrated())
+pub async fn discovery_scan(state: State<'_, Shared>, timeout_ms: u64) -> Cmd<Vec<device_discovery::DiscoveredDevice>> {
+    let core = state.inner().clone();
+    blocking(move || crate::tv::scan(&core, timeout_ms)).await
 }
 
 #[tauri::command]
-pub fn discovery_scan(timeout_ms: u64) -> Cmd<Vec<Value>> {
-    let _ = timeout_ms;
-    Err(hub_not_integrated())
+pub async fn tv_pair(state: State<'_, Shared>, device_id: String) -> Cmd<TvPairResult> {
+    let core = state.inner().clone();
+    blocking(move || crate::tv::pair(&core, &device_id)).await
 }
 
 #[tauri::command]
-pub fn tv_pair(device_id: String) -> Cmd<TvPairResult> {
-    let _ = device_id;
-    Err(hub_not_integrated())
+pub async fn tv_send_key(state: State<'_, Shared>, device_id: String, key: device_discovery::TvRemoteKey) -> Cmd<()> {
+    let core = state.inner().clone();
+    blocking(move || crate::tv::send_key(&core, &device_id, key)).await
 }
 
 #[tauri::command]
-pub fn tv_send_key(device_id: String, key: String) -> Cmd<()> {
-    let _ = (device_id, key);
-    Err(hub_not_integrated())
-}
-
-#[tauri::command]
-pub fn tv_screenshot(device_id: String) -> Cmd<MediaMetadata> {
-    let _ = device_id;
-    Err(hub_not_integrated())
+pub async fn tv_screenshot(app: AppHandle, state: State<'_, Shared>, device_id: String) -> Cmd<MediaMetadata> {
+    let core = state.inner().clone();
+    blocking(move || crate::tv::screenshot(Some(&app), &core, &device_id)).await
 }
 
 /// Command names, in contract order (used by build.rs ACL generation and tests).

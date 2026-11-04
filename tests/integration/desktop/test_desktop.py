@@ -426,7 +426,9 @@ class Desktop(unittest.TestCase):
     def test_45_disk_full_tmpfs(self):
         mnt = os.path.join(WORK, "tmpfs")
         os.makedirs(mnt, exist_ok=True)
-        r = subprocess.run(["mount", "-t", "tmpfs", "-o", "size=40m", "tmpfs", mnt], capture_output=True, text=True)
+        sudo = [] if os.geteuid() == 0 else ["sudo", "-n"]
+        opts = f"size=40m,uid={os.getuid()},gid={os.getgid()},mode=0755"
+        r = subprocess.run(sudo + ["mount", "-t", "tmpfs", "-o", opts, "tmpfs", mnt], capture_output=True, text=True)
         if r.returncode != 0:
             self.skipTest("cannot mount a tmpfs here: " + r.stderr.strip())
         try:
@@ -437,7 +439,7 @@ class Desktop(unittest.TestCase):
             self.assertTrue(meta["validation"]["valid"])
             evidence("low_disk_tmpfs_40mb", meta["path"], ffprobe(meta["path"]), stopReason=reason)
         finally:
-            subprocess.run(["umount", "-l", mnt])
+            subprocess.run(sudo + ["umount", "-l", mnt])
 
 
 class AvSync(unittest.TestCase):

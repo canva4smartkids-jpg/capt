@@ -53,10 +53,9 @@ jobs:
           CAPTUREONE_TEST_WORK: ${{ runner.temp }}/captureone-it
           CAPTUREONE_MEMORY_SECONDS: "40"
           CAPTUREONE_NO_ENCODER_CACHE: "1"
-        run: |
-          # The tmpfs disk-full test needs root for mount(2).
-          sudo --preserve-env=CAPTUREONE_CLI,CAPTUREONE_TEST_WORK,CAPTUREONE_MEMORY_SECONDS,CAPTUREONE_NO_ENCODER_CACHE,PATH \
-            bash tests/integration/desktop/run.sh --memory
+        # Runs as the runner user (PulseAudio refuses to run as root); the tmpfs disk-full
+        # test uses passwordless `sudo -n mount`.
+        run: bash tests/integration/desktop/run.sh --memory
 
       - name: Upload test results
         if: always()
