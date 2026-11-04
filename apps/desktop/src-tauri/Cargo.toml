@@ -49,3 +49,4 @@ macos-capture.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
+jsonschema = { version = "0.60", default-features = false }

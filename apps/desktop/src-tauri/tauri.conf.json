@@ -10,12 +10,73 @@
     "beforeBuildCommand": "pnpm build"
   },
   "app": {
-    "windows": [],
-    "security": { "csp": null }
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "CaptureOne",
+        "url": "index.html",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 980,
+        "minHeight": 640,
+        "center": true,
+        "resizable": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self'",
+        "img-src": "'self' asset: http://asset.localhost data: blob:",
+        "media-src": "'self' asset: http://asset.localhost blob:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "font-src": "'self' data:",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "form-action": "'none'"
+      },
+      "devCsp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "allow": ["$VIDEO/CaptureOne/**", "$HOME/Videos/CaptureOne/**"],
+          "deny": [],
+          "requireLiteralLeadingDot": false
+        }
+      }
+    }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "publisher": "CaptureOne contributors",
+    "copyright": "© 2026 CaptureOne contributors",
+    "category": "Video",
+    "shortDescription": "Screen capture and recording",
+    "longDescription": "Record displays, windows or regions with microphone and system audio, take screenshots, and manage validated recordings in a local library.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "linux": {
+      "deb": {
+        "depends": ["ffmpeg"],
+        "section": "video"
+      },
+      "rpm": {
+        "depends": ["ffmpeg"]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "12.3",
+      "entitlements": "./entitlements.plist",
+      "hardenedRuntime": true
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
   }
 }

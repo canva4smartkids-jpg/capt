@@ -22,41 +22,29 @@ pub fn create_backend() -> CaptureResult<Arc<dyn CaptureBackend>> {
     }
 }
 
-/// Deep link into the OS privacy settings for a permission, if the OS has one.
-pub fn permission_settings_url(kind: PermissionKind) -> CaptureResult<&'static str> {
-    let unsupported = || Err(CaptureError::unsupported("This system has no settings page for that permission."));
-    if cfg!(target_os = "macos") {
-        return match kind {
-            PermissionKind::ScreenCapture | PermissionKind::SystemAudio => Ok("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"),
-            PermissionKind::Microphone => Ok("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"),
-            PermissionKind::LocalNetwork => Ok("x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork"),
-            PermissionKind::Notifications => Ok("x-apple.systempreferences:com.apple.preference.notifications"),
-            PermissionKind::Storage => unsupported(),
-        };
+/// Opens the OS privacy settings page for a permission (implemented by the backend crates).
+pub fn open_privacy_settings(kind: PermissionKind) -> CaptureResult<()> {
+    #[cfg(target_os = "macos")]
+    {
+        macos_capture::open_privacy_settings(kind)
     }
-    if cfg!(target_os = "windows") {
-        return match kind {
-            PermissionKind::Microphone => Ok("ms-settings:privacy-microphone"),
-            PermissionKind::ScreenCapture => Ok("ms-settings:privacy-graphicscaptureprogrammatic"),
-            PermissionKind::Notifications => Ok("ms-settings:notifications"),
-            _ => unsupported(),
-        };
+    #[cfg(target_os = "windows")]
+    {
+        windows_capture_backend::open_privacy_settings(kind)
     }
-    unsupported()
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = kind;
+        Err(CaptureError::unsupported("Linux desktops have no standard privacy settings page; screen capture on X11 needs no permission."))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "linux")]
     #[test]
-    fn settings_links_are_platform_specific() {
-        let r = permission_settings_url(PermissionKind::Microphone);
-        if cfg!(target_os = "macos") {
-            assert!(r.unwrap().contains("Privacy_Microphone"));
-        } else if cfg!(target_os = "windows") {
-            assert_eq!(r.unwrap(), "ms-settings:privacy-microphone");
-        } else {
-            assert_eq!(r.unwrap_err().code, CaptureErrorCode::Unsupported);
-        }
+    fn linux_has_no_privacy_settings_page() {
+        assert_eq!(open_privacy_settings(PermissionKind::Microphone).unwrap_err().code, CaptureErrorCode::Unsupported);
     }
 }

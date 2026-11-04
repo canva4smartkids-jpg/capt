@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>CaptureOne records your microphone together with the screen when you turn on microphone audio.</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>CaptureOne needs Screen Recording access to capture your displays and windows.</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>CaptureOne records sound playing on this Mac when you turn on system audio.</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.video</string>
+</dict>
+</plist>

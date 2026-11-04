@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "region",
+  "description": "Full-screen region selector: show/focus/close itself, read a display frame, return the selection.",
+  "windows": ["region"],
+  "permissions": ["core:window:allow-show", "core:window:allow-set-focus", "core:window:allow-close", "region-window"]
+}

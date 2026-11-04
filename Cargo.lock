@@ -595,6 +595,7 @@ dependencies = [
  "capture-core",
  "crossbeam-channel",
  "fs4",
+ "jsonschema",
  "linux-capture",
  "log",
  "macos-capture",
