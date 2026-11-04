@@ -67,8 +67,10 @@ jobs:
           set -o pipefail
           cargo test -p capture-core -p macos-capture 2>&1 | tee "$OUT/cargo-test.log"
 
+      # --no-deps: lint only this crate (workspace path deps such as capture-core belong to
+      # other workstreams and newer stable clippy releases add lints there).
       - name: cargo clippy (macos-capture, deny warnings)
-        run: cargo clippy -p macos-capture --all-targets -- -D warnings
+        run: cargo clippy -p macos-capture --all-targets --no-deps -- -D warnings
 
       # Intel slice: compile and link the test binaries for x86_64 (not run: Rosetta is not
       # guaranteed on arm64 runners).

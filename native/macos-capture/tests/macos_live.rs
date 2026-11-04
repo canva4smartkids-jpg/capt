@@ -76,7 +76,7 @@ fn unknown_sources_are_reported_as_not_found() {
 fn non_blank(frame: &VideoFrame) -> bool {
     let packed = frame.packed_bgra();
     let first = &packed[0..3];
-    packed.chunks_exact(4).any(|px| &px[0..3] != first)
+    (0..packed.len() / 4).any(|i| &packed[i * 4..i * 4 + 3] != first)
 }
 
 #[test]
