@@ -1,0 +1,169 @@
+name: tv
+
+# Samsung Tizen / LG webOS companion apps, the companion hub and TV discovery/control.
+on:
+  push:
+    paths:
+      - "apps/tv-web/**"
+      - "apps/samsung-tv/**"
+      - "apps/lg-tv/**"
+      - "services/companion-hub/**"
+      - "services/device-discovery/**"
+      - "packages/capture-contracts/**"
+      - "native/capture-core/**"
+      - ".github/workflows/tv.yml"
+      - "Cargo.lock"
+      - "pnpm-lock.yaml"
+  pull_request:
+    paths:
+      - "apps/tv-web/**"
+      - "apps/samsung-tv/**"
+      - "apps/lg-tv/**"
+      - "services/companion-hub/**"
+      - "services/device-discovery/**"
+      - "packages/capture-contracts/**"
+      - "native/capture-core/**"
+      - ".github/workflows/tv.yml"
+      - "Cargo.lock"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: tv-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  PLAYWRIGHT_VERSION: "1.63.0"
+  TIZEN_SDK_IMAGE: vitalets/tizen-webos-sdk:latest
+
+jobs:
+  rust:
+    name: companion-hub + device-discovery (Rust)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: tv
+      - name: Clippy
+        run: cargo clippy -p companion-hub -p device-discovery --all-targets -- -D warnings
+      - name: Protocol types without the server feature
+        run: cargo check -p companion-hub --no-default-features
+      - name: Tests (contract schemas, hub over real sockets, fake SSDP/SSAP/Samsung servers)
+        run: cargo test -p companion-hub -p device-discovery
+      - name: Build demo hub for the TV smoke test
+        run: cargo build -p companion-hub --example demo_hub
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-hub
+          path: target/debug/examples/demo_hub
+          if-no-files-found: error
+          retention-days: 3
+
+  web:
+    name: tv-web (typecheck, unit tests, ES2015 bundle, headless smoke test)
+    runs-on: ubuntu-24.04
+    needs: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter "@captureone/tv-web..." --filter "@captureone/capture-contracts..."
+      - name: Typecheck
+        run: pnpm --filter @captureone/tv-web typecheck
+      - name: Unit tests (spatial navigation, keys, hub client, capability report, keypad, adapters)
+        run: pnpm --filter @captureone/tv-web test
+      - name: Contract tests
+        run: pnpm --filter @captureone/capture-contracts test
+      - name: Build (includes the ES2015 / file:// bundle check)
+        run: pnpm --filter @captureone/tv-web build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tv-web-dist
+          path: apps/tv-web/dist
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          name: demo-hub
+          path: demo-hub
+      - name: Install ffmpeg and headless Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          npm install -g "playwright@${PLAYWRIGHT_VERSION}"
+          playwright install --with-deps chromium
+      - name: End-to-end smoke test (remote keys against a real companion hub)
+        run: |
+          chmod +x demo-hub/demo_hub
+          node apps/tv-web/scripts/smoke.mjs --hub-bin demo-hub/demo_hub --out tv-screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tv-screenshots
+          path: tv-screenshots
+          if-no-files-found: ignore
+
+  webos:
+    name: LG webOS package (.ipk via @webos-tools/cli)
+    runs-on: ubuntu-24.04
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter "@captureone/lg-tv..."
+      - uses: actions/download-artifact@v4
+        with:
+          name: tv-web-dist
+          path: apps/tv-web/dist
+      - name: Package and inspect the ipk
+        run: node apps/lg-tv/scripts/build.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webos-ipk
+          path: artifacts/webos
+          if-no-files-found: error
+
+  tizen:
+    name: Samsung Tizen package (.wgt via Tizen CLI in Docker)
+    runs-on: ubuntu-24.04
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: tv-web-dist
+          path: apps/tv-web/dist
+      - name: Validate config.xml
+        run: node apps/samsung-tv/scripts/build.mjs --check-only
+      - name: Unsigned .wgt (always produced)
+        run: node apps/samsung-tv/scripts/build.mjs --signer=none
+      - name: Signed .wgt (Tizen CLI; Docker Hub pulls are retried with backoff)
+        # A rate-limited Docker Hub must not fail the whole pipeline: the unsigned .wgt above
+        # is still uploaded. Signing uses a throwaway author certificate + Tizen's default
+        # distributor certificate (retail TVs need a Samsung-issued certificate).
+        continue-on-error: true
+        run: node apps/samsung-tv/scripts/build.mjs --signer=docker
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tizen-wgt
+          path: artifacts/tizen
+          if-no-files-found: error
