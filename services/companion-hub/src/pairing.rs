@@ -1,6 +1,6 @@
 //! Pairing: 6-digit codes, per-client lockout, random bearer tokens stored as SHA-256 hashes.
 
-use crate::protocol::{DeviceKind, PairRequest, PairedDevice};
+use crate::protocol::{PairRequest, PairedDevice};
 use capture_core::{CaptureError, CaptureResult};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -235,7 +235,7 @@ impl Pairing {
     }
 
     #[cfg(test)]
-    pub(crate) fn kind_of(&self, id: &str) -> Option<DeviceKind> {
+    pub(crate) fn kind_of(&self, id: &str) -> Option<crate::protocol::DeviceKind> {
         self.inner.lock().devices.iter().find(|d| d.device.id == id).map(|d| d.device.device_kind)
     }
 }
@@ -258,6 +258,7 @@ fn write_private(path: &Path, data: &[u8]) -> CaptureResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::DeviceKind;
     use std::net::Ipv4Addr;
 
     fn req(code: &str) -> PairRequest {
