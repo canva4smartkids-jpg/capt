@@ -1,9 +1,59 @@
 [package]
 name = "windows-capture-backend"
-description = "Windows Graphics Capture backend"
+description = "Windows Graphics Capture (WGC) + WASAPI loopback capture backend for CaptureOne"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+name = "windows_capture_backend"
+path = "src/lib.rs"
+
 [dependencies]
 capture-core.workspace = true
+
+# Windows-only dependencies: on every other OS this crate builds to a library that only
+# contains the platform-independent helpers (PCM conversion, id parsing, capability gating).
+[target.'cfg(windows)'.dependencies]
+log.workspace = true
+# MIT — Windows Graphics Capture session/frame-pool plumbing (https://github.com/NiiightmareXD/windows-capture)
+windows-capture = "=2.0.1"
+# MIT OR Apache-2.0 — same version windows-capture uses, so only one copy is compiled.
+windows = { version = "0.62.2", features = [
+  "Foundation",
+  "Foundation_Metadata",
+  "Graphics",
+  "Graphics_Capture",
+  "Graphics_DirectX",
+  "Graphics_DirectX_Direct3D11",
+  "Security_Authorization_AppCapabilityAccess",
+  "Win32_Foundation",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dwm",
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_Graphics_Gdi",
+  "Win32_Media",
+  "Win32_Media_Audio",
+  "Win32_Media_KernelStreaming",
+  "Win32_Media_Multimedia",
+  "Win32_Devices_FunctionDiscovery",
+  "Win32_Devices_Properties",
+  "Win32_Security",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Performance",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_System_Variant",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Direct3D11",
+  "Win32_System_WinRT_Graphics_Capture",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_PropertiesSystem",
+  "Win32_UI_WindowsAndMessaging",
+] }
+# MIT OR Apache-2.0 — blocking `.join()` on WinRT async operations (borderless access request).
+windows-future = "0.3.2"

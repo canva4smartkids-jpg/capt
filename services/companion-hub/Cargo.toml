@@ -1,9 +1,53 @@
 [package]
 name = "companion-hub"
-description = "Companion hub HTTP/WebSocket server for TV/mobile companion apps"
+description = "Companion hub HTTP/WebSocket server for TV/mobile companion apps (CaptureOne desktop embeds it)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = ["server"]
+# Without `server`, only the companion protocol types (mirror of
+# packages/capture-contracts/src/companion.ts) are compiled. `device-discovery`
+# uses that to share DeviceKind / DiscoveredDevice without pulling in axum.
+server = [
+  "dep:axum",
+  "dep:tokio",
+  "dep:tower",
+  "dep:tower-http",
+  "dep:mdns-sd",
+  "dep:futures-util",
+  "dep:sha2",
+  "dep:getrandom",
+  "dep:if-addrs",
+  "dep:hex",
+  "dep:log",
+  "dep:parking_lot",
+]
+
 [dependencies]
 capture-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio", "ws", "query"], optional = true }
+tokio = { version = "1.47", features = ["rt-multi-thread", "net", "fs", "sync", "time", "macros"], optional = true }
+tower = { version = "0.5", default-features = false, features = ["util"], optional = true }
+tower-http = { version = "0.6.6", default-features = false, features = ["cors", "fs"], optional = true }
+mdns-sd = { version = "0.13", default-features = false, optional = true }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"], optional = true }
+sha2 = { version = "0.10", optional = true }
+getrandom = { version = "0.3", optional = true }
+if-addrs = { version = "0.13", optional = true }
+hex = { version = "0.4", optional = true }
+log = { workspace = true, optional = true }
+parking_lot = { workspace = true, optional = true }
+
+[dev-dependencies]
+jsonschema = { version = "0.60", default-features = false }
+ureq = { version = "3", default-features = false, features = ["json"] }
+tungstenite = { version = "0.27", default-features = false, features = ["handshake"] }
+tempfile = "3"
+
+[[example]]
+name = "demo_hub"
+required-features = ["server"]
