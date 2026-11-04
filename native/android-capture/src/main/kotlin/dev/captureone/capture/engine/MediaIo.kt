@@ -37,17 +37,13 @@ data class DisplayInfo(val size: Size, val densityDpi: Int, val refreshRate: Flo
             val dm = context.getSystemService(DisplayManager::class.java)
             val display = dm.getDisplay(Display.DEFAULT_DISPLAY)
             val metrics = DisplayMetrics()
-            val size: Size
+            @Suppress("DEPRECATION")
+            display.getRealMetrics(metrics)
+            var size = Size(metrics.widthPixels, metrics.heightPixels)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val wm = context.getSystemService(WindowManager::class.java)
-                val b = wm.maximumWindowMetrics.bounds
-                size = Size(b.width(), b.height())
-                @Suppress("DEPRECATION")
-                display.getRealMetrics(metrics)
-            } else {
-                @Suppress("DEPRECATION")
-                display.getRealMetrics(metrics)
-                size = Size(metrics.widthPixels, metrics.heightPixels)
+                // Preferred on API 30+; services/application contexts may not be visual contexts, so fall back quietly.
+                runCatching { context.getSystemService(WindowManager::class.java).maximumWindowMetrics.bounds }
+                    .getOrNull()?.takeIf { it.width() > 0 && it.height() > 0 }?.let { size = Size(it.width(), it.height()) }
             }
             return DisplayInfo(size, metrics.densityDpi, display.refreshRate)
         }
