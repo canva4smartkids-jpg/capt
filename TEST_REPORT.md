@@ -69,7 +69,10 @@ physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical micropho
 | Unit tests (PCM conversion, padding removal, ids, OS-build gating, region crop, QPC mapping, pacer) | container | 27/27 pass |
 | Full link (`x86_64-pc-windows-gnu`, mingw-w64) of smoke tool + `captureone-cli` | container | PE32+ executables produced (not run) |
 | MSVC cross-link via cargo-xwin | container | blocked (`aka.ms`, `download.visualstudio.microsoft.com` denied by network policy) |
-| Native build, tests and real WGC capture/recording on `windows-latest` | GitHub Actions | **in progress** — first runs failed; being fixed |
+| **Backend on a real Windows runner** (`windows-latest`, Windows Server, Hyper-V 1024x768 display, WARP) | GitHub Actions run 41848095895, job 126637005021 — all 18 steps **success** (coordinator re-checked step conclusions) | unit tests + clippy on MSVC; display `\\.\DISPLAY1` 1024x768 enumerated; WGC display screenshot PNG 1024x768 (ffprobe exact); region PNG exactly 200x120; Notepad window found by enumeration and captured (754x512); 5 s WGC stream → `h264 1024x768, 5 s, 150 frames` (95 backend frames, real content: 764 distinct sampled colours); closing Notepad → `SourceClosed`, clean `stop()`; 3 start/stop cycles + drop without stop clean |
+| **`captureone-cli` on Windows** | run 41841763518, job 126619406516 — success | `sources`, `screenshot`, `record --duration 5 --codec h264` → ffprobe `h264 1024x768, 5 s, 150 frames, 741 994 bytes`; engine `validation.valid: true` |
+| Desktop NSIS installer | run 41841763518 job `desktop` — success, installer uploaded | built, not installed/run |
+| WASAPI loopback | hosted runner has **no audio device** → backend correctly returns `SOURCE_NOT_FOUND`, reports systemAudio `unsupported` | **unverified** (needs a machine with an audio endpoint) |
 
 ## 4. macOS backend (ScreenCaptureKit)
 
