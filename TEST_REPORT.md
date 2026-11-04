@@ -152,3 +152,14 @@ companion protocol is plain HTTP on the LAN; pairing code not rotated after pair
 5 MPL-2.0 crates (Tauri tooling, unmodified); EPL-1.0 JUnit test-only. `cargo audit` /
 `pnpm audit` run in CI (`ci-contracts` → `audit` job).
 
+
+## 10. CI status at hand-off (final commit 129ef03)
+
+| Workflow | Result |
+|---|---|
+| `ci-contracts` (TS + Rust contract tests, schema drift, clippy, **cargo audit + pnpm audit**) | success — run 41862538632 |
+| `tv` | success — run 41862538685 |
+| `windows` | success on a0b4c09 (run 41859040424); later commits only touched capture-core test code + docs |
+| `android` | success on ef939f3 (run 41849443116, incl. API 34 emulator MediaProjection tests); later commits did not touch Android code paths covered by the workflow |
+| `linux-engine` | in progress at hand-off (run 41862538424); last completed run success (41855495856) |
+| `macos` | queued for a hosted macOS runner at hand-off (run 41862538958); last completed native+capture run success (41846405670); the run on ef3ceca was cancelled before finishing |
