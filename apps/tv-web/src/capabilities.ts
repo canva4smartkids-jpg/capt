@@ -23,13 +23,18 @@ export function platformOf(id: PlatformId): Platform {
   return id === "tizen" ? "tizen" : id === "webos" ? "webos" : "other-tv";
 }
 
+/** Samsung's Smart TV FAQ states that screen capture is not supported in Samsung TV apps. */
+export const SAMSUNG_NO_CAPTURE = "Samsung's Smart TV FAQ states that screen capture is not supported in Samsung TV apps.";
+/** LG's developer forum states webOS provides no screen-capture API for apps. */
+export const LG_NO_CAPTURE = "LG's developer forum states that webOS TV provides no screen-capture API to apps.";
+
 const HDMI_REASON =
   "Record this TV's picture by connecting its HDMI source (through an HDMI splitter) to a USB capture card on a CaptureOne desktop. HDCP-protected content (most streaming apps, Blu-ray) cannot be captured.";
 
 export function tvFeatures(id: PlatformId): Partial<Record<FeatureKey, FeatureSupport>> {
-  const os = id === "tizen" ? "Samsung Tizen" : id === "webos" ? "LG webOS" : "This browser";
+  const noCapture = id === "tizen" ? SAMSUNG_NO_CAPTURE : id === "webos" ? LG_NO_CAPTURE : "This browser build is for development only.";
   return {
-    displayCapture: { level: "external-hardware", reason: `${os} gives apps no screen-capture API. ${HDMI_REASON}` },
+    displayCapture: { level: "external-hardware", reason: `${noCapture} ${HDMI_REASON}` },
     videoRecording: {
       level: "companion-only",
       reason: "Starts, pauses and stops recording on the paired CaptureOne desktop (e.g. of an HDMI capture card). The TV app never records the TV screen itself.",
@@ -42,10 +47,10 @@ export function tvFeatures(id: PlatformId): Partial<Record<FeatureKey, FeatureSu
         ? {
             level: "partial",
             reason:
-              "Only from a paired CaptureOne desktop over the LAN (LG ssap://tv/executeOneShot): needs accepting a prompt on the TV, depends on model/firmware, protected content is black. Not available inside this app and not verified on real hardware.",
+              "Experimental, undocumented: a paired CaptureOne desktop can request a still image over the LAN with LG's undocumented ssap://tv/executeOneShot call (used by community tools; not an official LG API). Needs accepting a prompt on the TV, depends on model/firmware, may stop working with updates, protected content is black. Not available inside this app and not verified on real hardware.",
           }
         : id === "tizen"
-          ? { level: "unsupported", reason: "Samsung's TV remote-control API has no screenshot function and Tizen apps cannot capture the screen." }
+          ? { level: "unsupported", reason: `${SAMSUNG_NO_CAPTURE} Samsung's TV remote-control API (port 8001/8002) only sends keys and has no screenshot function.` }
           : { level: "unsupported", reason: "Not a TV." },
     remoteControl: { level: "native", reason: "Controls the paired CaptureOne desktop over the LAN (HTTP + WebSocket)." },
     recordingHistory: { level: "companion-only", reason: "Browses and plays the desktop's recording library." },
@@ -114,7 +119,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   hdmiCaptureDevice: "HDMI capture card",
   remoteControl: "Remote control of the desktop",
   deviceDiscovery: "Automatic hub discovery",
-  tvNativeScreenshot: "TV picture screenshot (LG)",
+  tvNativeScreenshot: "TV picture screenshot (LG, experimental)",
   fileTransfer: "Play recordings from the desktop",
 };
 

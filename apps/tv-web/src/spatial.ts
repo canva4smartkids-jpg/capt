@@ -5,11 +5,12 @@
  * beyond the current element in that direction and its centre lies on that side. Among
  * qualifying candidates the lowest score wins:
  *
- *   score = gap along the direction + 2 x gap across it (0 when the ranges overlap)
+ *   score = gap along the direction + W x gap across it (0 when the ranges overlap)
  *           + 0.1 x distance between the centres across the direction
  *
- * so an aligned neighbour (same row/column) beats a closer diagonal one, and ties between
- * aligned neighbours go to the most centred one.
+ * with W = 30 for left/right and 2 for up/down (the orthogonal weights of the CSS Spatial
+ * Navigation draft): moving sideways strongly prefers the same row, moving up/down tolerates a
+ * column shift. Ties between aligned neighbours go to the most centred one.
  */
 import type { Direction } from "./keys.js";
 
@@ -68,7 +69,8 @@ export function score(from: Rect, to: Rect, dir: Direction): number | null {
       centre = Math.abs(cx(to) - cx(from));
       break;
   }
-  return primary + 2 * cross + 0.1 * centre;
+  const weight = dir === "left" || dir === "right" ? 30 : 2;
+  return primary + weight * cross + 0.1 * centre;
 }
 
 export function findNext<T>(from: Rect, candidates: readonly Candidate<T>[], dir: Direction): Candidate<T> | null {

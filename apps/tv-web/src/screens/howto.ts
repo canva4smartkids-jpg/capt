@@ -21,7 +21,9 @@ export function createHowto(app: App): Screen {
           h(
             "p",
             null,
-            "Samsung Tizen and LG webOS do not give apps any way to capture the screen or the sound. CaptureOne for TV therefore never claims to record the TV. It remote-controls CaptureOne on your computer and plays back what the computer recorded.",
+            isLg
+              ? "LG's developer forum states that webOS TV provides no screen-capture API to apps, and there is no API to capture the sound either. CaptureOne for TV therefore never claims to record the TV. It remote-controls CaptureOne on your computer and plays back what the computer recorded."
+              : "Samsung's Smart TV FAQ states that screen capture is not supported in Samsung TV apps, and there is no API to capture the sound either. CaptureOne for TV therefore never claims to record the TV. It remote-controls CaptureOne on your computer and plays back what the computer recorded.",
           ),
         )),
       );
@@ -77,8 +79,8 @@ export function createHowto(app: App): Screen {
             "p",
             null,
             isLg
-              ? "The picture of the TV's built-in apps never leaves the TV over HDMI. On some LG webOS models, CaptureOne on the computer can request a still screenshot of the TV picture over the network after you accept a pairing prompt on the TV (model/firmware dependent, protected content is black, not video)."
-              : "The picture of the TV's built-in apps never leaves the TV over HDMI, and Samsung TVs offer no screenshot function to other devices, so the TV's own apps cannot be recorded.",
+              ? "The picture of the TV's built-in apps never leaves the TV over HDMI. Experimental, undocumented: on some LG webOS models CaptureOne on the computer can request a still screenshot of the TV picture over the network through an undocumented LG call (ssap://tv/executeOneShot) after you accept a pairing prompt on the TV. It is not an official LG API, depends on model and firmware, may stop working after updates, gives still images only, and protected content is black."
+              : "The picture of the TV's built-in apps never leaves the TV over HDMI. Samsung's Smart TV FAQ states that screen capture is not supported in Samsung TV apps, and Samsung TVs offer no screenshot function to other devices, so the TV's own apps cannot be recorded.",
           ),
         ),
       );

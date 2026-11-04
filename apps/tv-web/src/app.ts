@@ -81,7 +81,7 @@ export class App {
       h(
         "header",
         { class: "header" },
-        h("div", { class: "brand" }, h("span", { class: "logo" }, "●"), "CaptureOne", h("span", { class: "brand-sub" }, " for TV")),
+        h("div", { class: "brand" }, h("span", { class: "logo" }, "●"), "CaptureOne", h("span", { class: "brand-sub" }, " TV")),
         h("nav", { class: "tabs" }, this.tabs.home, this.tabs.connect, this.tabs.recordings, this.tabs.remote, this.tabs.howto),
         this.connBadge,
       ),

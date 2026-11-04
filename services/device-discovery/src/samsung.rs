@@ -4,7 +4,7 @@
 //! (self-signed certificate; the TV shows an "Allow" prompt on first connect and returns a token
 //! in `ms.channel.connect`). 2016-2017 models: `ws://<ip>:8001/...` without a token.
 //! The API only sends remote keys. **It cannot take screenshots**: `screenshot` always returns
-//! UNSUPPORTED. Verified only against the fake server in `tests/`; no real Samsung TV was available.
+//! UNSUPPORTED (Samsung's Smart TV FAQ states screen capture is not supported in Samsung TV apps). Verified only against the fake server in `tests/`; no real Samsung TV was available.
 
 use crate::keys::{samsung_key, TvRemoteKey};
 use crate::store::{CredentialStore, Vendor};
@@ -129,7 +129,9 @@ impl SamsungClient {
 
     /// Samsung's remote API has no screenshot function.
     pub fn screenshot(&mut self) -> CaptureResult<MediaMetadata> {
-        Err(CaptureError::unsupported("Samsung Tizen TVs expose no screenshot API to LAN clients; record the TV's HDMI output with a capture card instead"))
+        Err(CaptureError::unsupported(
+            "Samsung's Smart TV FAQ states screen capture is not supported in Samsung TV apps, and the remote-control API has no screenshot function; record the HDMI source with a capture card instead",
+        ))
     }
 
     pub fn close(mut self) {

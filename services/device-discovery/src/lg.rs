@@ -6,8 +6,10 @@
 //! that insists on the signed block can be served by passing a custom manifest in
 //! [`LgClientConfig::manifest`].
 //!
-//! `ssap://tv/executeOneShot` (TV picture screenshot) is model/firmware dependent, needs the user
-//! to accept pairing on the TV, and protected (HDCP/DRM) content comes back black.
+//! **Experimental, undocumented:** `ssap://tv/executeOneShot` (TV picture screenshot) is not part of
+//! any documented LG API (LG's developer forum states webOS provides no screen-capture API); it is
+//! used by community tools, is model/firmware dependent, may disappear with firmware updates, needs
+//! the user to accept pairing on the TV, and protected (HDCP/DRM) content comes back black.
 
 use crate::keys::{lg_action, LgKeyAction, TvRemoteKey};
 use crate::store::{CredentialStore, Vendor};
@@ -272,13 +274,14 @@ impl LgClient {
         }
     }
 
-    /// Captures the TV picture with `ssap://tv/executeOneShot`, downloads the returned image from
+    /// **Experimental, undocumented.** Captures the TV picture with LG's undocumented
+    /// `ssap://tv/executeOneShot`, downloads the returned image from
     /// the TV and writes it into `output_dir`. The image is decoded to validate it; an all-black
     /// frame is reported as a validation warning (protected content is blanked by the TV).
     pub fn screenshot(&mut self, output_dir: &Path, tv_name: &str) -> CaptureResult<MediaMetadata> {
         let resp = self.request("ssap://tv/executeOneShot", json!({}))?;
         let uri = resp["imageUri"].as_str().ok_or_else(|| {
-            CaptureError::unsupported("This LG TV did not return a screenshot (executeOneShot is model/firmware dependent)")
+            CaptureError::unsupported("This LG TV did not return a screenshot (experimental, undocumented ssap://tv/executeOneShot; model/firmware dependent)")
         })?;
         let pin = if uri.starts_with("https://") && self.secure { self.pin.clone() } else { None };
         let http = http_get(uri, Some(self.ip), pin, Duration::from_secs(20), 64 * 1024 * 1024)?;

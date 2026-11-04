@@ -2,8 +2,9 @@
 //!
 //! * [`scan`]: SSDP M-SEARCH + UPnP description + mDNS browse, merged per IP into contract
 //!   [`DiscoveredDevice`]s (`packages/capture-contracts/src/companion.ts`).
-//! * [`lg::LgClient`]: LG webOS SSAP (pairing, system info, remote keys, `executeOneShot`
-//!   screenshot of the TV picture — `partial`: model/firmware dependent, DRM content blank).
+//! * [`lg::LgClient`]: LG webOS SSAP (pairing, system info, remote keys and an **experimental,
+//!   undocumented** `executeOneShot` screenshot of the TV picture — `partial`: not an official LG
+//!   API, model/firmware dependent, DRM content blank).
 //! * [`samsung::SamsungClient`]: Samsung Tizen remote-control WebSocket (keys only).
 //! * [`TvClient`]: one entry point for the desktop's `tv_pair` / `tv_send_key` / `tv_screenshot`.
 //!
@@ -165,7 +166,8 @@ impl TvClient {
         }
     }
 
-    /// LG only (`ssap://tv/executeOneShot`); UNSUPPORTED on Samsung.
+    /// LG only (experimental, undocumented `ssap://tv/executeOneShot`); UNSUPPORTED on Samsung
+    /// (Samsung's Smart TV FAQ: screen capture is not supported in Samsung TV apps).
     pub fn screenshot(&mut self, output_dir: &Path, tv_name: &str) -> CaptureResult<MediaMetadata> {
         match self {
             TvClient::Lg(c) => c.screenshot(output_dir, tv_name),
@@ -182,8 +184,8 @@ impl TvClient {
 }
 
 /// Honest support levels for the desktop app's capability report (TV-related features it gains
-/// from this crate). `tvNativeScreenshot` is `partial`: LG only, needs on-TV pairing, firmware
-/// dependent, DRM content blank, and unverified on real hardware.
+/// from this crate). `tvNativeScreenshot` is `partial` and experimental/undocumented: LG only, needs
+/// on-TV pairing, firmware dependent, DRM content blank, and unverified on real hardware.
 pub fn desktop_tv_features() -> BTreeMap<FeatureKey, FeatureSupport> {
     let mut m = BTreeMap::new();
     m.insert(
@@ -200,7 +202,7 @@ pub fn desktop_tv_features() -> BTreeMap<FeatureKey, FeatureSupport> {
         FeatureKey::TvNativeScreenshot,
         FeatureSupport::with(
             SupportLevel::Partial,
-            "LG webOS only via ssap://tv/executeOneShot after pairing; model/firmware dependent; protected (HDCP/DRM) content is blank; not verified on a real TV",
+            "Experimental, undocumented: LG webOS only, via the undocumented ssap://tv/executeOneShot call (not an official LG API; LG's developer forum states webOS provides no screen-capture API) after accepting pairing on the TV; model/firmware dependent and may break with updates; protected (HDCP/DRM) content is blank; not verified on a real TV. Samsung: unsupported (Samsung's Smart TV FAQ states screen capture is not supported in Samsung TV apps)",
         )
         .requires(vec![PermissionKind::LocalNetwork]),
     );
