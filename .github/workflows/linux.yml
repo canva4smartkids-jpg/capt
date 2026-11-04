@@ -34,7 +34,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ffmpeg xvfb x11-utils xterm pulseaudio pulseaudio-utils libasound2-plugins \
+            ffmpeg xvfb x11-utils xterm xdotool pulseaudio pulseaudio-utils libasound2-plugins \
             libpulse-dev libasound2-dev pkg-config jq
           ffmpeg -hide_banner -version | head -1
 
