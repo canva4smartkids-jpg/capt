@@ -43,14 +43,25 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     };
   }, [open, initialFocus]);
 
+  // Escape closes even when focus left the dialog (e.g. a focused <video> was replaced).
+  // Inner handlers that consume Escape call stopPropagation, which keeps it from reaching here.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) {
+        e.preventDefault();
+        onCloseRef.current();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!open) return null;
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onClose();
-      return;
-    }
     if (e.key !== "Tab" || !ref.current) return;
     const items = Array.from(ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute("hidden"));
     if (items.length === 0) {

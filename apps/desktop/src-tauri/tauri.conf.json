@@ -42,7 +42,10 @@
       "assetProtocol": {
         "enable": true,
         "scope": {
-          "allow": ["$VIDEO/CaptureOne/**", "$HOME/Videos/CaptureOne/**"],
+          "allow": [
+            "$VIDEO/CaptureOne/**",
+            "$HOME/Videos/CaptureOne/**"
+          ],
           "deny": [],
           "requireLiteralLeadingDot": false
         }
@@ -53,18 +56,36 @@
     "active": true,
     "targets": "all",
     "publisher": "CaptureOne contributors",
-    "copyright": "© 2026 CaptureOne contributors",
+    "copyright": "\u00a9 2026 CaptureOne contributors",
     "category": "Video",
     "shortDescription": "Screen capture and recording",
     "longDescription": "Record displays, windows or regions with microphone and system audio, take screenshots, and manage validated recordings in a local library.",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "linux": {
       "deb": {
-        "depends": ["ffmpeg"],
+        "depends": [
+          "ffmpeg"
+        ],
+        "recommends": [
+          "gstreamer1.0-libav",
+          "gstreamer1.0-plugins-good"
+        ],
         "section": "video"
       },
       "rpm": {
-        "depends": ["ffmpeg"]
+        "depends": [
+          "/usr/bin/ffmpeg",
+          "/usr/bin/ffprobe"
+        ],
+        "recommends": [
+          "gstreamer1-plugin-libav"
+        ]
       }
     },
     "macOS": {

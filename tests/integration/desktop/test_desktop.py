@@ -23,11 +23,19 @@ CLI = os.environ.get("CAPTUREONE_CLI", "captureone-cli")
 WORK = os.environ.get("CAPTUREONE_TEST_WORK", "/tmp/captureone-it")
 SAMPLES = os.environ.get("CAPTUREONE_SAMPLES_DIR")  # copy small validated samples here
 DISPLAY_ID = os.environ.get("CAPTUREONE_TEST_DISPLAY_ID", "screen")
+# Shared CI/dev disks can be tight; the disk guard itself is covered by test_42/test_45.
+MIN_FREE_MB = os.environ.get("CAPTUREONE_TEST_MIN_FREE_MB", "100")
 EVIDENCE = []
 
 
+def with_min_free(args):
+    if args and args[0] == "record" and "--min-free-mb" not in args:
+        return args + ["--min-free-mb", MIN_FREE_MB]
+    return args
+
+
 def run(args, timeout=120, check=True):
-    p = subprocess.run([CLI] + args, capture_output=True, text=True, timeout=timeout)
+    p = subprocess.run([CLI] + with_min_free(args), capture_output=True, text=True, timeout=timeout)
     events = []
     for line in p.stderr.splitlines():
         line = line.strip()
@@ -334,7 +342,7 @@ class Desktop(unittest.TestCase):
                 time.sleep(0.1)
             self.assertIsNotNone(win, "test window not listed")
             d = outdir("winclose")
-            proc = subprocess.Popen([CLI, "record", "--out", d, "--target", f"window:{win['id']}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            proc = subprocess.Popen([CLI] + with_min_free(["record", "--out", d, "--target", f"window:{win['id']}"]), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             time.sleep(4)
             term.kill()
             out, err = proc.communicate(timeout=60)
@@ -349,9 +357,47 @@ class Desktop(unittest.TestCase):
         finally:
             term.kill()
 
+    def test_46_window_resize_keeps_output_size(self):
+        title = f"captureone-resize-{os.getpid()}"
+        term = subprocess.Popen(["xterm", "-T", title, "-geometry", "80x24+250+250", "-e", "sh", "-c", "while true; do date; sleep 0.1; done"])
+        try:
+            win = None
+            for _ in range(50):
+                _, src, _ = run(["sources", "--kind", "window"])
+                win = next((s for s in src if s["name"] == title), None)
+                if win:
+                    break
+                time.sleep(0.1)
+            self.assertIsNotNone(win)
+            d = outdir("winresize")
+            proc = subprocess.Popen([CLI] + with_min_free(["record", "--out", d, "--target", f"window:{win['id']}", "--duration", "5"]), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            time.sleep(1.5)
+            subprocess.run(["xdotool", "windowsize", str(int(win["id"], 16)), "900", "500"], check=True)
+            time.sleep(1.5)
+            subprocess.run(["xdotool", "windowsize", str(int(win["id"], 16)), "300", "200"], check=True)
+            out, err = proc.communicate(timeout=60)
+            self.assertEqual(proc.returncode, 0, err[-2000:])
+            meta = json.loads(out)
+            w, h = win["width"] // 2 * 2, win["height"] // 2 * 2
+            info = self.check_video(meta, 5.0, w, h)
+            self.assertEqual(decode_errors(meta["path"]), "")
+            evidence("window_resized_twice", meta["path"], info)
+        finally:
+            term.kill()
+
+    def test_47_explicit_microphone_device(self):
+        _, devs, _ = run(["audio-devices"])
+        pulse = next((dv for dv in devs if dv["kind"] == "input" and dv["id"].endswith(":pulse")), None)
+        if not pulse:
+            self.skipTest("no ALSA 'pulse' input device")
+        d, meta, _ = self.record("micdev", ["--target", f"region:{DISPLAY_ID}:0,0,320,240", "--mic", "--mic-device", pulse["id"]], duration=3)
+        info = self.check_video(meta, 3.0, 320, 240)
+        self.assertGreater(mean_volume(meta["path"]), -50.0)
+        evidence("microphone_by_id", meta["path"], info, device=pulse["id"])
+
     def test_44_kill9_then_recover(self):
         d = outdir("kill9")
-        proc = subprocess.Popen([CLI, "record", "--out", d, "--target", f"display:{DISPLAY_ID}", "--system-audio", "--height", "720"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen([CLI] + with_min_free(["record", "--out", d, "--target", f"display:{DISPLAY_ID}", "--system-audio", "--height", "720"]), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(7)
         os.kill(proc.pid, signal.SIGKILL)
         proc.wait()

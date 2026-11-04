@@ -21,7 +21,7 @@ trap cleanup EXIT
 Xvfb "$DISPLAY_NUM" -screen 0 1600x1000x24 -nolisten tcp >"$WORK/xvfb.log" 2>&1 & PIDS+=($!)
 export DISPLAY="$DISPLAY_NUM"
 for _ in $(seq 50); do xdpyinfo >/dev/null 2>&1 && break; sleep 0.1; done
-xsetroot -solid '#24324d'
+for _ in 1 2 3; do xsetroot -solid "#24324d" && break; sleep 0.5; done
 # Something to look at on the desktop (thumbnails, region selection, recordings).
 xterm -geometry 96x28+60+60 -bg '#0f172a' -fg '#e2e8f0' -fa Monospace -fs 11 -T "Terminal" -e "bash -c 'while true; do date; ls -la /usr/share | head -20; sleep 1; done'" & PIDS+=($!)
 pulseaudio --daemonize=no --exit-idle-time=-1 >"$WORK/pulse.log" 2>&1 & PIDS+=($!)

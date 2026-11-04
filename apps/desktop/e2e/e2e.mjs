@@ -57,23 +57,14 @@ const xpath = (xp, t) => find("xpath", xp, t);
 const click = async (el) => wd("POST", s(`/element/${el}/click`), {});
 const button = (label, t) => xpath(`//button[contains(normalize-space(.), ${JSON.stringify(label)}) and not(@disabled)]`, t);
 
-function windowId(name) {
-  const out = execFileSync("xdotool", ["search", "--name", name], { encoding: "utf8" }).trim().split("\n").filter(Boolean);
-  return out[out.length - 1];
-}
-
 async function shot(name, { root = false } = {}) {
   mkdirSync(SHOTS, { recursive: true });
   const file = join(SHOTS, `desktop-${name}.png`);
   await sleep(400);
+  // Page shots come from WebDriver (exact webview pixels; X11 grabs of WebKit's GL surface can be
+  // stale without a compositor). Root shots show overlay windows (indicator, region selector).
   if (root) execFileSync("import", ["-window", "root", file]);
-  else {
-    try {
-      execFileSync("import", ["-window", windowId("^CaptureOne$|· CaptureOne$"), file]);
-    } catch {
-      writeFileSync(file, Buffer.from(await wd("GET", s("/screenshot")), "base64"));
-    }
-  }
+  else writeFileSync(file, Buffer.from(await wd("GET", s("/screenshot")), "base64"));
   summary.screenshots.push(file);
   log("screenshot", { file });
 }
@@ -162,7 +153,8 @@ async function main() {
   ).catch((e) => ({ error: String(e) }));
   log("preview", { video });
   await shot("library-preview");
-  await key(""); // Escape
+  await key("\uE00C"); // Escape
+  await waitFor("preview closed", () => exec(`return !document.querySelector(".co-dialog");`), 5000);
   await go("#/library");
   await click(await css("button[aria-label='List view']"));
   await shot("library-list");
@@ -206,7 +198,7 @@ async function main() {
   const size = await exec(`return document.querySelector('.region-size')?.textContent ?? null;`);
   log("region dragged", { size });
   await shot("region", { root: true });
-  await key(""); // Enter
+  await key("\uE007"); // Enter
   await wd("POST", s("/window"), { handle: mainHandle });
   const regionText = await waitFor("region summary", () => exec(`return document.querySelector('.region-summary__size')?.textContent ?? null;`), 15_000);
   log("region selected", { regionText });

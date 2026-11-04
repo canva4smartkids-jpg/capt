@@ -58,8 +58,12 @@ pub fn open_indicator(app: &AppHandle) -> CaptureResult<()> {
         .visible(false)
         // Best effort: keeps the bar out of captures where the OS supports it (Windows/macOS).
         .content_protected(true)
+        .min_inner_size(w, h)
+        .max_inner_size(w, h)
         .build()
         .map_err(tauri_err)?;
+    // Some X11 setups ignore the initial size of undecorated windows; enforce it.
+    let _ = win.set_size(Size::Logical(tauri::LogicalSize { width: w, height: h }));
     if let Ok(Some(m)) = win.primary_monitor() {
         let scale = m.scale_factor();
         let x = m.position().x as f64 + (m.size().width as f64 - w * scale) / 2.0;

@@ -52,7 +52,7 @@ def main():
     out = os.path.join(WORK, "memory")
     os.makedirs(out, exist_ok=True)
     proc = subprocess.Popen(
-        [CLI, "record", "--out", out, "--target", f"display:{DISPLAY_ID}", "--fps", "30", "--system-audio", "--duration", str(SECONDS)],
+        [CLI, "record", "--out", out, "--target", f"display:{DISPLAY_ID}", "--fps", "30", "--system-audio", "--duration", str(SECONDS), "--min-free-mb", os.environ.get("CAPTUREONE_TEST_MIN_FREE_MB", "100")],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
