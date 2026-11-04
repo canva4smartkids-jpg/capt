@@ -1,0 +1,337 @@
+# macOS workstream CI: native build + tests of the ScreenCaptureKit backend, best-effort real
+# capture on hosted runners, and an unsigned Tauri desktop bundle.
+#
+# What is and is not proven here:
+# * `cargo test` / `clippy` compile, link and run natively on Apple Silicon (macOS 14 and 15).
+# * Real capture (SCShareableContent / SCStream / SCScreenshotManager) needs the Screen Recording
+#   TCC grant. Hosted runners have SIP disabled and ship pre-seeded TCC rows; we additionally try
+#   to grant kTCCServiceScreenCapture to the processes that run our binaries (best effort). If
+#   macOS still refuses, the capture steps fail with PERMISSION_DENIED and are allowed to fail
+#   (`continue-on-error`) — their logs and artifacts show exactly what happened.
+name: macos
+
+on:
+  push:
+    branches: ["claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+  RUST_LOG: info
+
+jobs:
+  native:
+    name: Rust + capture (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      OUT: ${{ github.workspace }}/macos-ci-output
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-native
+
+      - name: Runner facts
+        run: |
+          mkdir -p "$OUT"
+          {
+            sw_vers
+            uname -a
+            echo "SIP: $(csrutil status 2>&1 || true)"
+            system_profiler SPDisplaysDataType 2>/dev/null || true
+          } | tee "$OUT/runner.txt"
+
+      # Real native compile + link + run (arm64).
+      - name: cargo test (capture-core, macos-capture)
+        run: |
+          set -o pipefail
+          cargo test -p capture-core -p macos-capture 2>&1 | tee "$OUT/cargo-test.log"
+
+      - name: cargo clippy (macos-capture, deny warnings)
+        run: cargo clippy -p macos-capture --all-targets -- -D warnings
+
+      # Intel slice: compile and link the test binaries for x86_64 (not run: Rosetta is not
+      # guaranteed on arm64 runners).
+      - name: Link x86_64-apple-darwin test binaries
+        run: cargo test -p macos-capture --target x86_64-apple-darwin --no-run
+
+      - name: Build captureone-cli (engine workstream) and live test binary
+        id: build
+        run: |
+          set -o pipefail
+          cli_ok=false
+          if cargo build -p captureone-cli --release 2>&1 | tee "$OUT/cli-build.log"; then
+            cli_ok=true
+          else
+            echo "::warning::captureone-cli failed to build (owned by the engine workstream); CLI capture steps will be skipped"
+          fi
+          echo "cli_ok=$cli_ok" >> "$GITHUB_OUTPUT"
+          echo "cli=${{ github.workspace }}/target/release/captureone-cli" >> "$GITHUB_OUTPUT"
+          test_bin=$(cargo test -p macos-capture --test macos_live --no-run --message-format=json 2>/dev/null \
+            | jq -r 'select(.reason == "compiler-artifact" and .executable != null) | .executable' | tail -n1)
+          echo "live test binary: $test_bin"
+          echo "test_bin=$test_bin" >> "$GITHUB_OUTPUT"
+
+      # Best effort. The system TCC database holds kTCCServiceScreenCapture; it is writable on
+      # hosted runners because SIP is disabled there. TCC attributes a CLI process to its
+      # "responsible" ancestor, so we grant the runner's process chain, the shells and our own
+      # binaries. Nothing here weakens a user's Mac: it only runs on throwaway CI VMs.
+      - name: Grant Screen Recording to CI processes (best effort)
+        continue-on-error: true
+        env:
+          CLI_BIN: ${{ steps.build.outputs.cli }}
+          TEST_BIN: ${{ steps.build.outputs.test_bin }}
+        run: |
+          set -u
+          SYS_DB="/Library/Application Support/com.apple.TCC/TCC.db"
+          USER_DB="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
+          echo "Existing ScreenCapture grants (system db):"
+          sudo sqlite3 "$SYS_DB" "SELECT client, client_type, auth_value, auth_reason FROM access WHERE service='kTCCServiceScreenCapture';" \
+            | tee "$OUT/tcc-before.txt" || echo "::warning::cannot read the system TCC database"
+          echo "access table columns: $(sudo sqlite3 "$SYS_DB" 'PRAGMA table_info(access);' | cut -d'|' -f2 | tr '\n' ' ')"
+
+          candidates=(/usr/local/opt/runner/provisioner/provisioner /bin/bash /bin/zsh /bin/sh /usr/bin/env "${CLI_BIN:-}" "${TEST_BIN:-}"
+                      "$(command -v cargo || true)" "$(rustup which cargo 2>/dev/null || true)")
+          while IFS= read -r p; do candidates+=("$p"); done < <(ps -axo comm= | grep -E 'Runner\.(Listener|Worker)|provisioner|hosted-compute-agent' | sort -u)
+          # Every ancestor of this shell.
+          pid=$$
+          while [ "${pid:-0}" -gt 1 ]; do
+            exe=$(ps -o comm= -p "$pid" 2>/dev/null | sed 's/^ *//')
+            [ -n "$exe" ] && candidates+=("$exe")
+            pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+          done
+
+          now=$(date +%s)
+          for c in "${candidates[@]}"; do
+            case "$c" in /*) ;; *) continue ;; esac
+            [ -e "$c" ] || continue
+            for db in "$SYS_DB" "$USER_DB"; do
+              [ -f "$db" ] || continue
+              if sudo sqlite3 "$db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, flags, last_modified) VALUES ('kTCCServiceScreenCapture', '$c', 1, 2, 4, 1, 0, $now);"; then
+                echo "granted kTCCServiceScreenCapture: $c ($db)"
+              else
+                echo "::warning::could not insert $c into $db"
+              fi
+            done
+          done
+          # macOS 15+ additionally shows a periodic "bypass the private window picker" alert for
+          # apps capturing without SCContentSharingPicker. Record a far-future approval for the
+          # same clients (the plist macOS itself writes when the user clicks "Allow").
+          if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 15 ]; then
+            approvals="$HOME/Library/Group Containers/group.com.apple.replayd/ScreenCaptureApprovals.plist"
+            mkdir -p "$(dirname "$approvals")"
+            for c in "${candidates[@]}"; do
+              case "$c" in /*) [ -e "$c" ] && defaults write "$approvals" "$c" -date "3024-01-01 00:00:00 +0000" ;; esac
+            done
+            defaults read "$approvals" > "$OUT/screen-capture-approvals.txt" 2>&1 || true
+          fi
+          # Make tccd re-read the databases (launchd restarts it).
+          sudo killall tccd 2>/dev/null || true
+          sleep 2
+          sudo sqlite3 "$SYS_DB" "SELECT client, auth_value FROM access WHERE service='kTCCServiceScreenCapture';" > "$OUT/tcc-after.txt" || true
+
+      - name: Live ScreenCaptureKit tests (needs the TCC grant)
+        id: live
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          CAPTUREONE_LIVE_CAPTURE: "1"
+        run: |
+          set -o pipefail
+          cargo test -p macos-capture --test macos_live -- --test-threads=1 --nocapture 2>&1 | tee "$OUT/live-tests.log"
+
+      - name: Live tests with the macOS 12.3–13 screenshot path forced
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          CAPTUREONE_LIVE_CAPTURE: "1"
+          CAPTUREONE_MACOS_FORCE_STREAM_SCREENSHOT: "1"
+        run: |
+          set -o pipefail
+          cargo test -p macos-capture --test macos_live live_sources_and_screenshots -- --test-threads=1 --nocapture 2>&1 | tee "$OUT/live-tests-forced-stream.log"
+
+      - name: Install ffmpeg
+        if: steps.build.outputs.cli_ok == 'true'
+        run: |
+          brew install ffmpeg
+          ffmpeg -hide_banner -encoders 2>/dev/null | grep -E 'videotoolbox|libx264' | tee "$OUT/ffmpeg-encoders.txt" || true
+
+      # captureone-cli's argument syntax is owned by the engine workstream; this step discovers
+      # it from --help and falls back across common spellings for the output directory.
+      - name: captureone-cli capabilities / sources / screenshot / record (needs the TCC grant)
+        id: cli
+        if: steps.build.outputs.cli_ok == 'true'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          CLI: ${{ steps.build.outputs.cli }}
+        run: |
+          MEDIA="$OUT/media"; mkdir -p "$MEDIA"
+          "$CLI" --help 2>&1 | tee "$OUT/cli-help.txt" || true
+          for sub in capabilities sources screenshot record; do "$CLI" "$sub" --help > "$OUT/cli-help-$sub.txt" 2>&1 || true; done
+
+          run() { echo "+ captureone-cli $*" >&2; "$CLI" "$@"; }
+          # Tries an output-directory flag spelling the CLI accepts (exit code 2 = usage error).
+          with_out() {
+            local sub=$1; shift
+            for flag in --output-dir --out-dir --output -o; do
+              if grep -q -- "$flag" "$OUT/cli-help-$sub.txt" 2>/dev/null; then
+                run "$sub" "$@" "$flag" "$MEDIA"; return $?
+              fi
+            done
+            (cd "$MEDIA" && run "$sub" "$@")
+          }
+
+          status=0
+          run capabilities > "$OUT/capabilities.json" 2> "$OUT/capabilities.err" || status=1
+          cat "$OUT/capabilities.json" "$OUT/capabilities.err"
+          run sources > "$OUT/sources.json" 2> "$OUT/sources.err" || status=1
+          cat "$OUT/sources.json" "$OUT/sources.err"
+          with_out screenshot 2>&1 | tee "$OUT/screenshot.log"; [ "${PIPESTATUS[0]}" -eq 0 ] || status=1
+          with_out record --duration 5 2>&1 | tee "$OUT/record.log"; [ "${PIPESTATUS[0]}" -eq 0 ] || status=1
+          echo "Produced media:"; find "$MEDIA" -type f -print | tee "$OUT/media-files.txt"
+          exit $status
+
+      - name: ffprobe assertions on the CLI outputs
+        if: steps.build.outputs.cli_ok == 'true'
+        continue-on-error: true
+        run: |
+          MEDIA="$OUT/media"
+          png=$(find "$MEDIA" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) | head -n1)
+          mp4=$(find "$MEDIA" -type f -name '*.mp4' | head -n1)
+          fail=0
+          if [ -n "$png" ]; then
+            ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of json "$png" | tee "$OUT/ffprobe-screenshot.json"
+            python3 -c 'import json,sys; s=json.load(open(sys.argv[1]))["streams"][0]; assert s["width"]>0 and s["height"]>0, s; print("screenshot OK", s)' "$OUT/ffprobe-screenshot.json" || fail=1
+          else
+            echo "::warning::no screenshot file was produced"; fail=1
+          fi
+          if [ -n "$mp4" ]; then
+            ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate -of json "$mp4" | tee "$OUT/ffprobe-recording.json"
+            python3 - "$OUT/ffprobe-recording.json" <<'PY' || fail=1
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          dur = float(d["format"]["duration"])
+          video = [s for s in d["streams"] if s["codec_type"] == "video"]
+          assert video, "no video stream"
+          v = video[0]
+          assert v["codec_name"] in ("h264", "hevc"), v
+          assert v["width"] > 0 and v["height"] > 0, v
+          assert 4.0 <= dur <= 7.0, f"duration {dur}"
+          print(f"recording OK: {v['codec_name']} {v['width']}x{v['height']} {dur:.2f}s, audio streams: {sum(s['codec_type'] == 'audio' for s in d['streams'])}")
+          PY
+          else
+            echo "::warning::no recording was produced"; fail=1
+          fi
+          exit $fail
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### macOS ${{ matrix.os }}"
+            echo "- live SCK tests: ${{ steps.live.outcome }}"
+            echo "- captureone-cli capture: ${{ steps.cli.outcome }} (cli built: ${{ steps.build.outputs.cli_ok }})"
+            if grep -q PermissionDenied "$OUT"/*.log "$OUT"/*.err 2>/dev/null; then
+              echo "- Screen Recording permission was NOT granted on this runner; capture results are not representative."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-capture-${{ matrix.os }}
+          path: ${{ env.OUT }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  desktop-bundle:
+    name: Tauri desktop bundle (unsigned .app/.dmg)
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check desktop app sources
+        id: check
+        run: |
+          if [ -f apps/desktop/package.json ] && [ -f apps/desktop/src-tauri/tauri.conf.json ] && [ -f apps/desktop/src-tauri/Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::apps/desktop (desktop-app workstream) is not complete yet; skipping the bundle"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.check.outputs.present == 'true'
+        with:
+          version: 10.28.0
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.check.outputs.present == 'true'
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.check.outputs.present == 'true'
+        with:
+          key: macos-desktop
+
+      - name: pnpm install
+        if: steps.check.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile=false
+
+      # Unsigned: no APPLE_SIGNING_IDENTITY / notarization secrets are configured (see
+      # native/macos-capture/README.md for what distribution needs). Tauri passes --skip-jenkins
+      # to its DMG script when CI is set, avoiding Finder automation on the headless runner.
+      - name: tauri build --bundles app,dmg
+        if: steps.check.outputs.present == 'true'
+        run: pnpm --filter ./apps/desktop tauri build --bundles app,dmg
+
+      - name: Collect bundles
+        if: steps.check.outputs.present == 'true'
+        run: |
+          mkdir -p bundle-out
+          for app in target/release/bundle/macos/*.app; do
+            [ -d "$app" ] || continue
+            codesign -dv --verbose=2 "$app" 2>&1 | tee bundle-out/codesign.txt || true
+            /usr/libexec/PlistBuddy -c 'Print' "$app/Contents/Info.plist" > bundle-out/Info.plist.txt 2>&1 || true
+            ditto -c -k --keepParent "$app" "bundle-out/$(basename "$app" .app)-macos-arm64.app.zip"
+          done
+          cp target/release/bundle/dmg/*.dmg bundle-out/ 2>/dev/null || echo "::warning::no .dmg produced"
+          if ! grep -q NSMicrophoneUsageDescription bundle-out/Info.plist.txt 2>/dev/null; then
+            echo "::warning::Info.plist has no NSMicrophoneUsageDescription; microphone requests are refused by macos-capture (macOS would kill the app)"
+          fi
+          ls -la bundle-out
+
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.present == 'true'
+        with:
+          name: captureone-macos-unsigned
+          path: bundle-out
+          if-no-files-found: error
+          retention-days: 14
