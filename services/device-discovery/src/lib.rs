@@ -129,9 +129,57 @@ pub fn scan_with(opts: &ScanOptions) -> CaptureResult<Vec<DiscoveredDevice>> {
     }
 
     let now = now_iso8601();
-    let mut devices: Vec<DiscoveredDevice> = by_ip.values().filter_map(|ev| classify::to_device(ev, &now)).collect();
-    devices.sort_by(|a, b| (a.kind.as_str(), &a.name, &a.address).cmp(&(b.kind.as_str(), &b.name, &b.address)));
-    Ok(devices)
+    let devices: Vec<DiscoveredDevice> = by_ip.values().filter_map(|ev| classify::to_device(ev, &now)).collect();
+    Ok(dedupe_by_id(devices))
+}
+
+/// Preference for the address to keep when one device answers on several addresses
+/// (multi-homed hosts, mDNS records that include loopback): LAN-private first, loopback last.
+fn address_rank(addr: &str) -> (u8, String) {
+    let rank = match addr.parse::<IpAddr>() {
+        Ok(IpAddr::V4(v4)) if v4.is_loopback() => 3,
+        Ok(IpAddr::V6(v6)) if v6.is_loopback() => 3,
+        Ok(IpAddr::V4(v4)) if v4.is_private() => 0,
+        Ok(IpAddr::V4(v4)) if v4.is_link_local() => 2,
+        Ok(_) => 1,
+        Err(_) => 4,
+    };
+    (rank, addr.to_string())
+}
+
+fn union<T: PartialEq + Ord>(a: &mut Vec<T>, b: Vec<T>) {
+    for x in b {
+        if !a.contains(&x) {
+            a.push(x);
+        }
+    }
+    a.sort();
+}
+
+/// Device ids are unique in the result: one entry per id, merged (via/protocols/services) and
+/// keeping the best address. Sorted by kind, name, address.
+pub fn dedupe_by_id(devices: Vec<DiscoveredDevice>) -> Vec<DiscoveredDevice> {
+    let mut by_id: BTreeMap<String, DiscoveredDevice> = BTreeMap::new();
+    for d in devices {
+        match by_id.get_mut(&d.id) {
+            None => {
+                by_id.insert(d.id.clone(), d);
+            }
+            Some(existing) => {
+                let mut merged = if address_rank(&d.address) < address_rank(&existing.address) { d.clone() } else { existing.clone() };
+                let other = if merged.address == d.address { existing.clone() } else { d };
+                union(&mut merged.discovered_via, other.discovered_via);
+                union(&mut merged.control_protocols, other.control_protocols);
+                union(&mut merged.services, other.services);
+                merged.manufacturer = merged.manufacturer.or(other.manufacturer);
+                merged.model = merged.model.or(other.model);
+                *existing = merged;
+            }
+        }
+    }
+    let mut out: Vec<DiscoveredDevice> = by_id.into_values().collect();
+    out.sort_by(|a, b| (a.kind.as_str(), &a.name, &a.address).cmp(&(b.kind.as_str(), &b.name, &b.address)));
+    out
 }
 
 /// A paired connection to a controllable TV.
@@ -207,4 +255,39 @@ pub fn desktop_tv_features() -> BTreeMap<FeatureKey, FeatureSupport> {
         .requires(vec![PermissionKind::LocalNetwork]),
     );
     m
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dev(id: &str, addr: &str, via: DiscoveredVia) -> DiscoveredDevice {
+        DiscoveredDevice {
+            id: id.into(),
+            name: "Hub".into(),
+            kind: DeviceKind::Desktop,
+            manufacturer: None,
+            model: None,
+            address: addr.into(),
+            port: Some(47800),
+            discovered_via: vec![via],
+            control_protocols: vec![ControlProtocol::CaptureoneCompanion],
+            services: vec!["_captureone._tcp.local.".into()],
+            last_seen: String::new(),
+        }
+    }
+
+    #[test]
+    fn dedupe_prefers_lan_address_and_merges() {
+        let out = dedupe_by_id(vec![
+            dev("captureone:a", "127.0.0.1", DiscoveredVia::Mdns),
+            dev("captureone:a", "192.168.1.20", DiscoveredVia::Mdns),
+            dev("captureone:a", "203.0.113.5", DiscoveredVia::Ssdp),
+            dev("captureone:b", "10.0.0.2", DiscoveredVia::Mdns),
+        ]);
+        assert_eq!(out.len(), 2);
+        let a = out.iter().find(|d| d.id == "captureone:a").unwrap();
+        assert_eq!(a.address, "192.168.1.20");
+        assert_eq!(a.discovered_via, vec![DiscoveredVia::Ssdp, DiscoveredVia::Mdns]);
+    }
 }

@@ -2,7 +2,7 @@
 //! Failure (no multicast, sandboxed network, firewall) is logged and never fails `start`.
 
 use crate::protocol::{HubInfo, COMPANION_MDNS_SERVICE, COMPANION_PROTOCOL_VERSION};
-use mdns_sd::{ServiceDaemon, ServiceInfo};
+use mdns_sd::{IfKind, ServiceDaemon, ServiceInfo};
 use std::net::IpAddr;
 
 pub(crate) struct Advertisement {
@@ -47,6 +47,10 @@ pub(crate) fn advertise(info: &HubInfo, bind: IpAddr, port: u16) -> Option<Adver
             return None;
         }
     };
+    // Companions are on other devices: never advertise loopback addresses.
+    if let Err(e) = daemon.disable_interface(vec![IfKind::LoopbackV4, IfKind::LoopbackV6]) {
+        log::debug!("companion hub: cannot disable mDNS on loopback: {e}");
+    }
     let pv = COMPANION_PROTOCOL_VERSION.to_string();
     let props = [("id", info.hub_id.as_str()), ("pv", pv.as_str()), ("api", "/api/v1"), ("name", info.name.as_str())];
     let built = if bind.is_unspecified() {
