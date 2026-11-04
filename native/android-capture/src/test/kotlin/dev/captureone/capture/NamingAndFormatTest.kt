@@ -47,3 +47,14 @@ class NamingAndFormatTest {
         assertEquals("00:00", Format.duration(-5L))
     }
 }
+
+/** Regression: Android's ICU regex rejects inline flags such as (?U); keep patterns portable. */
+class PortableRegexTest {
+    @Test
+    fun namingPatternsUseNoInlineFlags() {
+        val src = RepoFiles.text("native/android-capture/src/main/kotlin/dev/captureone/capture/util/FileNaming.kt")
+        org.junit.Assert.assertFalse("(?U) is unsupported on Android", src.contains("(?U)"))
+        assertEquals("a b", FileNaming.sanitize("a　 b"))
+        assertEquals("x y", FileNaming.sanitize("x﻿y"))
+    }
+}

@@ -203,6 +203,9 @@ class CaptureService : Service(), RecorderListener {
             } catch (e: Exception) {
                 val err = e.toCaptureError()
                 main.post { CaptureController.reportStandaloneError(err) }
+            } catch (e: LinkageError) { // e.g. ExceptionInInitializerError: report instead of killing the process
+                val err = e.toCaptureError()
+                main.post { CaptureController.reportStandaloneError(err) }
             } finally {
                 try { projection.unregisterCallback(callback) } catch (_: Exception) {}
                 try { projection.stop() } catch (_: Exception) {}

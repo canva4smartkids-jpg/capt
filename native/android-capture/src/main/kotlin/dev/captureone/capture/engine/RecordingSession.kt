@@ -564,12 +564,17 @@ class RecordingSession(
             block()
         } catch (e: Exception) {
             failInternal(e.toCaptureError())
+        } catch (e: LinkageError) {
+            failInternal(e.toCaptureError())
         }
     }
 
     private inline fun runCatchingToReport(block: () -> Unit) {
         try {
             block()
+        } catch (e: LinkageError) {
+            listener.onError(id, e.toCaptureError())
+            publishStatus()
         } catch (e: Exception) {
             val err = e.toCaptureError()
             listener.onError(id, err)

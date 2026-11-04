@@ -8,7 +8,9 @@ import kotlin.math.roundToLong
 /** Port of packages/settings/src/filename.ts. */
 object FileNaming {
     private val INVALID = Regex("[<>:\"/\\\\|?*\\u0000-\\u001f]")
-    private val WHITESPACE = Regex("(?U)\\s+")
+    // JavaScript's \s set, spelled out: Android ICU regex rejects the inline Unicode-class flag, and plain \s differs
+    // between ICU (Unicode) and the JVM (ASCII).
+    private val WHITESPACE = Regex("[\\t\\n\\u000B\\f\\r \\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]+")
     private val TRAILING_DOTS_SPACES = Regex("[. ]+$")
     private val RESERVED = Regex("^(con|prn|aux|nul|com[0-9]|lpt[0-9])$", RegexOption.IGNORE_CASE)
 
