@@ -96,6 +96,17 @@ physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical micropho
 | GitHub Actions `tv` workflow | **pass** — run 41847053140: Rust 58/58, tv-web 44/44, contracts 13/13, headless smoke 28/28, signed `.wgt` (5 author + 6 distributor digests verified), unsigned `.wgt`, `.ipk` built + inspected; artifacts `tizen-wgt`, `webos-ipk`, `tv-web-dist`, `demo-hub`, `tv-screenshots` |
 | Real TVs | **not tested** — no hardware |
 
-## 6. Pending sections
-Desktop app (Tauri UI + E2E), Android (unit tests, APK builds, CI), CI results for
-Windows/macOS/Linux/TV/Android workflows.
+## 6. Desktop app (Tauri 2 + React) on Linux
+
+| Check | Result |
+|---|---|
+| UI unit tests (vitest) | desktop 63, design-system 15, media-metadata 10, shared-types 4 — all pass; `pnpm typecheck` clean |
+| `cargo test -p captureone-desktop` | 31 pass (library CRUD, settings fallback, IPC payloads vs contract JSON Schemas, every contract command implemented, hub adapter: start → pair over HTTP → token-protected listing/download → regenerate → restart) |
+| Bundles | `.deb` (current), `.rpm` + `.AppImage` (earlier build, without the final hub/preview changes) in `artifacts/linux/` |
+| **E2E of the built release app under Xvfb** (`apps/desktop/e2e/run-linux-e2e.sh`, tauri-driver + WebKitWebDriver) | Record page with real thumbnails + capability report (libx264/libx265 verified, HW encoders rejected) → Start → 3 s countdown → recording with live stats + indicator window → Pause → Resume → Stop → "Recording saved / Validated"; ffprobe: **h264 1600x1000 30 fps, 7.70 s**; Screenshot → validated PNG; Library grid/list with thumbnails, in-app video preview plays (7.7 s); Settings diagnostics (ffmpeg 6.1.1). Screenshots in `docs/screenshots/desktop-*.png` (coordinator viewed `desktop-library.png`: validated 7 s H.264 + PNG items) |
+| Not covered by E2E | Devices page, region overlay/region recording (selector fixed after the run, not re-run); covered only by vitest + Rust tests |
+| Windows/macOS desktop bundles | built by CI jobs (`windows` → NSIS, `macos` → app/dmg; macOS bundle job passed in run 41841621055) |
+
+## 7. Pending
+Android CI (AGP/Compose APK build, emulator instrumentation), Windows CI runtime results,
+Linux CI workflow.
