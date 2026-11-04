@@ -46,14 +46,18 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned to the toolchain of the reference build environment so that lints added in newer
+      # stable releases cannot break CI without a code change.
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.97.0"
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           key: tv
       - name: Clippy
-        run: cargo clippy -p companion-hub -p device-discovery --all-targets -- -D warnings
+        # --no-deps: lint only the crates this workflow owns (capture-core is linted by ci.yml).
+        run: cargo clippy --no-deps -p companion-hub -p device-discovery --all-targets -- -D warnings
       - name: Protocol types without the server feature
         run: cargo check -p companion-hub --no-default-features
       - name: Tests (contract schemas, hub over real sockets, fake SSDP/SSAP/Samsung servers)
