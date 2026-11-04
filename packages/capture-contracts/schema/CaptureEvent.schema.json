@@ -304,7 +304,8 @@
             "low-disk",
             "source-closed",
             "error",
-            "interrupted"
+            "interrupted",
+            "cancelled"
           ]
         },
         "media": {

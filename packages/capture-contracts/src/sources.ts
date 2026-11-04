@@ -19,7 +19,11 @@ export const CaptureSource = z.object({
   /** Pixel size of the source (physical pixels). */
   width: z.number().int().positive(),
   height: z.number().int().positive(),
-  /** Position in the virtual desktop (displays) or on screen (windows). */
+  /**
+   * Position in the virtual desktop (displays) or on screen (windows), in the OS's native
+   * desktop coordinate units (physical pixels on Windows/X11, points on macOS).
+   * `width`/`height` are always physical pixels.
+   */
   x: z.number().int().optional(),
   y: z.number().int().optional(),
   scaleFactor: z.number().positive().optional(),
@@ -34,7 +38,11 @@ export type CaptureSource = z.infer<typeof CaptureSource>;
 export const CaptureTarget = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("display"), displayId: z.string().min(1) }),
   z.object({ kind: z.literal("window"), windowId: z.string().min(1) }),
-  /** Region in physical pixels relative to the top-left of the given display. */
+  /**
+   * Region in physical pixels relative to the top-left of the given display. Backends may
+   * capture the region natively or capture the display and crop; either way frames delivered
+   * to the engine have exactly the region size.
+   */
   z.object({ kind: z.literal("region"), displayId: z.string().min(1), rect: Rect }),
   /** External video device such as an HDMI capture card. */
   z.object({ kind: z.literal("device"), deviceId: z.string().min(1) }),

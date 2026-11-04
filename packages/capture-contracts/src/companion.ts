@@ -108,8 +108,28 @@ export const COMPANION_ROUTES = {
   recordingThumbnail: "GET /api/v1/recordings/:id/thumbnail",
   status: "GET /api/v1/status",
   command: "POST /api/v1/command",
+  /** Token via `Authorization: Bearer` or `?token=` (browsers cannot set WebSocket headers). */
   events: "GET /api/v1/events (WebSocket upgrade)",
 } as const;
 
+/**
+ * Items served to companions: `path` and `thumbnailPath` are hub-relative URLs
+ * (e.g. `/api/v1/recordings/<id>/file`), never desktop file-system paths.
+ */
 export const RecordingListResponse = z.object({ items: z.array(MediaMetadata) });
+
+/** `GET /api/v1/status` body: the active session's status, or null when idle. */
+export const StatusResponse = RecordingStatus.nullable();
+export type StatusResponse = z.infer<typeof StatusResponse>;
+
+/**
+ * Error body for non-2xx hub responses. Pairing: 401 → `remainingAttempts`;
+ * 429 → `retryAfterSec` (also sent as `Retry-After`).
+ */
+export const HubError = z.object({
+  error: z.string(),
+  remainingAttempts: z.number().int().nonnegative().optional(),
+  retryAfterSec: z.number().int().nonnegative().optional(),
+});
+export type HubError = z.infer<typeof HubError>;
 export type RecordingListResponse = z.infer<typeof RecordingListResponse>;

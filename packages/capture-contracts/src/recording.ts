@@ -8,7 +8,7 @@ export const ResolutionSetting = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("source") }),
   /** Scale to the given height, preserving aspect ratio. Never upscales. */
   z.object({ mode: z.literal("height"), height: z.union([z.literal(2160), z.literal(1440), z.literal(1080), z.literal(720), z.literal(480)]) }),
-  /** Exact output size (letterboxed to preserve aspect). Never upscales. */
+  /** Fit within this box preserving aspect ratio (no letterboxing; output may be smaller in one dimension). Never upscales. */
   z.object({ mode: z.literal("custom"), width: z.number().int().min(16).max(7680), height: z.number().int().min(16).max(4320) }),
 ]);
 export type ResolutionSetting = z.infer<typeof ResolutionSetting>;
@@ -134,5 +134,6 @@ export const RecordingStatus = z.object({
 });
 export type RecordingStatus = z.infer<typeof RecordingStatus>;
 
-export const StopReason = z.enum(["user", "max-duration", "max-file-size", "low-disk", "source-closed", "error", "interrupted"]);
+/** Why a session ended. `cancelled` = user cancelled (output discarded). */
+export const StopReason = z.enum(["user", "max-duration", "max-file-size", "low-disk", "source-closed", "error", "interrupted", "cancelled"]);
 export type StopReason = z.infer<typeof StopReason>;

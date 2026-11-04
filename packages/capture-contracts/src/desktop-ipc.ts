@@ -82,11 +82,17 @@ export interface DesktopCommands {
   region_selection_done: [{ rect: Rect | null }, void];
 
   library_list: [Record<string, never>, MediaMetadata[]];
-  library_rename: [{ id: string; title: string }, MediaMetadata];
+  /** `renameFile: true` also renames the file on disk (never overwrites; " (n)" suffix on clash). */
+  library_rename: [{ id: string; title: string; renameFile?: boolean }, MediaMetadata];
   library_delete: [{ id: string; deleteFile: boolean }, void];
   /** Copies the file to `destination` (full path chosen with the save dialog). Returns the written path. */
   library_export: [{ id: string; destination: string }, string];
   library_reveal: [{ id: string }, void];
+  /**
+   * Linux only: tokenised http://127.0.0.1 URL for in-app `<video>` preview (WebKitGTK cannot
+   * play from the asset protocol). Returns null where the asset protocol is used instead.
+   */
+  media_stream_url: [{ id: string }, string | null];
   library_validate: [{ id: string }, MediaMetadata];
   library_storage: [Record<string, never>, StorageUsage];
   /** Finds and finalizes recordings interrupted by a crash/power loss. */

@@ -16,6 +16,9 @@ pub enum StreamEvent {
     Error(CaptureError),
 }
 
+/// Sinks are called on backend-owned threads (capture/dispatch queues) and must return
+/// quickly without blocking; heavy work belongs on the consumer's own threads. Calling
+/// `StreamHandle::stop` from inside a sink callback is allowed (backends must not deadlock).
 pub trait VideoSink: Send + Sync + 'static {
     fn on_frame(&self, frame: VideoFrame);
     fn on_event(&self, event: StreamEvent);
@@ -43,6 +46,8 @@ pub struct VideoStreamOptions {
 pub struct AudioStreamOptions {
     pub sample_rate: u32,
     pub channels: u16,
+    /// Platform device id. `None`, `"default"` and `"system-default"` all mean the default
+    /// output (loopback) / input device.
     pub device_id: Option<String>,
 }
 

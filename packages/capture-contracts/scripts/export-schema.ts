@@ -29,6 +29,10 @@ const schemas: Record<string, z.ZodType> = {
   PairResponse: c.PairResponse,
   RemoteCommand: c.RemoteCommand,
   HubEvent: c.HubEvent,
+  RemoteCommandResult: c.RemoteCommandResult,
+  RecordingListResponse: c.RecordingListResponse,
+  StatusResponse: c.StatusResponse,
+  HubError: c.HubError,
 };
 
 for (const [name, schema] of Object.entries(schemas)) {
