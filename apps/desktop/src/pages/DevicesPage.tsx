@@ -1,6 +1,6 @@
 import { Badge, Button, Card, Dialog, EmptyState, Icon, IconButton, Toggle, useToast, type IconName } from "@captureone/design-system";
 import type { CaptureError, DeviceKind, DiscoveredDevice, HubStatus, TvRemoteKey } from "@captureone/capture-contracts";
-import { useCallback, useEffect, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { relativeTime } from "../lib/format";
 import { asFailure, invoke } from "../lib/ipc";
 import { describeError, useApp } from "../state/app-state";
@@ -69,6 +69,9 @@ function HubCard() {
   const [error, setError] = useState<CaptureError | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const enabledRef = useRef(false);
+  enabledRef.current = status?.enabled ?? false;
+
   const load = useCallback(async () => {
     try {
       setStatus(await invoke("hub_status"));
@@ -81,6 +84,15 @@ function HubCard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The code rotates after every pairing; keep the displayed one current while visible.
+  useEffect(() => {
+    if (!enabledRef.current) return;
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible" && enabledRef.current) void load();
+    }, 3000);
+    return () => clearInterval(t);
+  }, [load, status?.enabled]);
 
   const run = async (fn: () => Promise<HubStatus>) => {
     setBusy(true);

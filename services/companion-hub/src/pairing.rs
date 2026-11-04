@@ -231,6 +231,11 @@ impl Pairing {
         devices.push(StoredDevice { device: device.clone(), token_sha256: sha256_hex(&token) });
         self.persist(&devices).map_err(|e| PairError::Storage(e.message))?;
         g.devices = devices;
+        // One code pairs exactly one device: rotate now (existing tokens stay valid).
+        if let Ok(code) = random_code() {
+            g.code = code;
+            g.failures_since_rotation = 0;
+        }
         Ok((token, device))
     }
 

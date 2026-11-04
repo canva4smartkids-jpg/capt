@@ -31,10 +31,11 @@ Manual source review of each surface against its attack model (hostile LAN peer,
 | S-08 | Low | android-capture / android-tv | Hub address field accepted public IPs and arbitrary host names, so the bearer token could be sent in clear text to the internet if mistyped. `HubAddress.parse` now only accepts private/loopback/link-local/CGNAT IPv4 and single-label or `.local`/`.lan`/`.home`/`.home.arpa`/`.internal` names. | Fixed | `CompanionClientTest` (host test, gradle `hostOnly`) |
 | S-09 | Low | android-tv | `networkSecurityConfig` permits cleartext app-wide (Android cannot match IP ranges in domain configs). Mitigated by S-08 and by the hub being the only endpoint the app contacts. | Accepted (see residual) | n/a |
 | S-10 | Info | desktop tests | `commands::tests::implements_every_contract_command` failed during the review while the concurrent device-capture work was registering `media_stream_url`; unrelated to the findings above. Re-run the desktop suite after that work lands. | Open (handed over) | existing test |
+| S-11 | Low | companion-hub pairing | The pairing code stayed valid after a successful pairing, so a code visible on screen could pair several devices. The code now rotates after every successful pairing (existing tokens stay valid). | Fixed | `integration::pairing_good_bad_and_persisted` |
 
 ### Reviewed, no issue found
 
-* **Hub auth**: tokens are 256-bit from the OS RNG, stored only as SHA-256 (verified in test: the token never appears in the store file), compared in constant time against every entry; store file is 0600. Pairing codes are uniform 6-digit, 5 failures per address trigger doubling lockout (30 s to 15 min), and 30 global failures rotate the code. All routes except `/info` and `/pair` require a token; WebSocket upgrade is authenticated by the same middleware.
+* **Hub auth**: tokens are 256-bit from the OS RNG, stored only as SHA-256 (verified in test: the token never appears in the store file), compared in constant time against every entry; store file is 0600. Pairing codes are uniform 6-digit, 5 failures per address trigger doubling lockout (30 s to 15 min), and 30 global failures rotate the code, and the code rotates after every successful pairing (one code pairs exactly one device; existing tokens stay valid). All routes except `/info` and `/pair` require a token; WebSocket upgrade is authenticated by the same middleware.
 * **Token in URLs**: `?token=` is required for `<video>`/`<img>`/WebSocket. The hub has no request logging layer and logs no URIs, so the token is not written to logs. Residual: it appears in browser history/devtools of the TV.
 * **File routes**: recording ids resolve only through the library (`library.get(id)` with a bound SQL parameter); the path comes from the DB row, never from the request. Traversal-looking ids (`..%2F`, absolute, NUL) return 404. Range handling is `tower-http` `ServeFile`: invalid, overflowing, multi-range and unit-mismatch headers return 200/206/416 and never more than the file (tested).
 * **Request limits**: 256 KiB body limit (413 tested), 64 KiB WebSocket message limit, keep-alive pings, lagging clients resynced.
@@ -49,11 +50,10 @@ Manual source review of each surface against its attack model (hostile LAN peer,
 ## Residual risks
 
 1. **Companion protocol v1 is plain HTTP on the LAN.** Anyone on the same network segment can sniff the pairing code exchange and later bearer tokens, and can impersonate the hub. TLS (with pinning of a self-signed hub certificate, as already done for TVs) is planned; until then the hub is opt-in and should be used on trusted networks only.
-2. Pairing code stays valid after a successful pairing until it rotates (30 global failures or manual regenerate). Consider rotating after every success.
-3. The hub has no global cap on concurrent plain HTTP connections or read timeouts for slow clients (only the WebSocket cap). Impact is limited to the LAN and to availability.
-4. `?token=` URLs are visible in TV browser history/dev tools and any LAN proxy.
-5. Session intermediates (`.captureone-sessions/`) and the recording library are written with the user's default umask; they inherit the output folder's permissions.
-6. TV pairing uses TOFU for TLS certificates; a hostile device present at first pairing could be pinned.
-7. Android TV allows cleartext app-wide (S-09); the hub address validator (S-08) is the compensating control.
-8. Device-capture ids (v4l2 / dshow / AVFoundation) are being added concurrently and were not reviewed; they must be passed to ffmpeg as vector arguments and validated against enumerated devices.
-9. No dependency vulnerability scan (`cargo audit`, `pnpm audit`, OSV) was possible offline; run it in CI before release.
+2. The hub has no global cap on concurrent plain HTTP connections or read timeouts for slow clients (only the WebSocket cap). Impact is limited to the LAN and to availability.
+3. `?token=` URLs are visible in TV browser history/dev tools and any LAN proxy.
+4. Session intermediates (`.captureone-sessions/`) and the recording library are written with the user's default umask; they inherit the output folder's permissions.
+5. TV pairing uses TOFU for TLS certificates; a hostile device present at first pairing could be pinned.
+6. Android TV allows cleartext app-wide (S-09); the hub address validator (S-08) is the compensating control.
+7. Device-capture ids (v4l2 / dshow / AVFoundation) are being added concurrently and were not reviewed; they must be passed to ffmpeg as vector arguments and validated against enumerated devices.
+8. No dependency vulnerability scan (`cargo audit`, `pnpm audit`, OSV) was possible offline; run it in CI before release.

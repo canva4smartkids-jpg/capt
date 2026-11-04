@@ -155,11 +155,22 @@ fn pairing_good_bad_and_persisted() {
     assert_eq!(body["remainingAttempts"], 4);
     let (status, body) = pair(&hub, "12x456");
     assert_eq!(status, 400, "{body}");
-    let (status, body) = pair(&hub, &hub.pairing_code());
+    let used = hub.pairing_code();
+    let (status, body) = pair(&hub, &used);
     assert_eq!(status, 200, "{body}");
     contract::assert_valid("PairResponse", &body);
     let token = body["token"].as_str().unwrap().to_string();
     assert_eq!(token.len(), 64);
+    // The code rotates after a success: the old one pairs nothing, the new one works.
+    let fresh = hub.pairing_code();
+    assert_ne!(fresh, used);
+    assert_eq!(pair(&hub, &used).0, 401);
+    let r = agent().get(format!("{}/api/v1/recordings", hub.url())).header("Authorization", format!("Bearer {token}")).call().unwrap();
+    assert_eq!(r.status().as_u16(), 200, "existing token stays valid");
+    assert_eq!(pair(&hub, &hub.pairing_code()).0, 200);
+    assert_eq!(hub.paired_devices().len(), 2);
+    let second = hub.paired_devices()[1].id.clone();
+    assert!(hub.unpair(&second).unwrap());
     let devices = hub.paired_devices();
     assert_eq!(devices.len(), 1);
     assert_eq!(devices[0].name, "Test TV");
