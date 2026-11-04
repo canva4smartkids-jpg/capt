@@ -19,6 +19,7 @@ use std::cell::RefCell;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex, OnceLock, Weak};
+use std::thread::ThreadId;
 use std::time::{Duration, Instant};
 use windows::Graphics::Capture::{GraphicsCaptureAccess, GraphicsCaptureAccessKind};
 use windows::Win32::Foundation::HWND;
@@ -115,6 +116,8 @@ pub(crate) struct HandlerFlags {
     fps: u32,
     /// Set by `StreamHandle::stop` (or after a terminal event) so nothing is delivered later.
     terminal: Arc<AtomicBool>,
+    /// Filled in on the capture thread so `stop()` can detect being called from a sink callback.
+    capture_thread: Arc<OnceLock<ThreadId>>,
 }
 
 struct Staging {
@@ -365,7 +368,13 @@ impl GraphicsCaptureApiHandler for WgcHandler {
     type Error = CaptureError;
 
     fn new(ctx: Context<Self::Flags>) -> Result<Self, Self::Error> {
-        let HandlerFlags { delivery, fps, terminal } = ctx.flags;
+        let HandlerFlags {
+            delivery,
+            fps,
+            terminal,
+            capture_thread,
+        } = ctx.flags;
+        let _ = capture_thread.set(std::thread::current().id());
         let streaming = matches!(delivery, Delivery::Stream(_));
         let pacer = DeliveryPacer::new(if streaming { fps } else { 0 });
         let period = pacer.flush_period_ms();
@@ -443,6 +452,7 @@ fn start_session(
     fps: u32,
     make_delivery: &dyn Fn() -> Delivery,
     terminal: &Arc<AtomicBool>,
+    capture_thread: &Arc<OnceLock<ThreadId>>,
 ) -> CaptureResult<Control> {
     if !wgc.capture {
         return Err(CaptureError::unsupported(
@@ -471,6 +481,7 @@ fn start_session(
             delivery: make_delivery(),
             fps,
             terminal: terminal.clone(),
+            capture_thread: capture_thread.clone(),
         };
         let started = match item {
             CaptureItem::Monitor(h) => WgcHandler::start_free_threaded(Settings::new(
@@ -515,7 +526,7 @@ pub(crate) fn screenshot(item: CaptureItem, wgc: &WgcFeatures, show_cursor: bool
     let terminal = Arc::new(AtomicBool::new(false));
     let control = {
         let make = || Delivery::Once(Some(tx.clone()));
-        start_session(item, wgc, show_cursor, 0, &make, &terminal)?
+        start_session(item, wgc, show_cursor, 0, &make, &terminal, &Arc::new(OnceLock::new()))?
     };
     drop(tx);
     let received = rx.recv_timeout(SCREENSHOT_TIMEOUT);
@@ -546,17 +557,28 @@ pub(crate) fn screenshot(item: CaptureItem, wgc: &WgcFeatures, show_cursor: bool
 pub(crate) struct WgcStream {
     control: Option<Control>,
     terminal: Arc<AtomicBool>,
+    capture_thread: Arc<OnceLock<ThreadId>>,
 }
 
 impl StreamHandle for WgcStream {
     fn stop(&mut self) -> CaptureResult<()> {
         self.terminal.store(true, Ordering::Release);
-        match self.control.take() {
-            // Posts WM_QUIT to the capture thread and joins it; the session, frame pool, D3D
-            // device and our staging texture are released when the thread and handler drop.
-            Some(control) => control.stop().map_err(map_control_error),
-            None => Ok(()),
+        let Some(control) = self.control.take() else {
+            return Ok(());
+        };
+        if self.capture_thread.get() == Some(&std::thread::current().id()) {
+            // stop() called from a sink callback on the capture thread: joining it here would
+            // deadlock, so the join happens on a helper thread once the callback returns.
+            std::thread::spawn(move || {
+                if let Err(e) = control.stop() {
+                    log::warn!("deferred WGC stop failed: {}", map_control_error(e));
+                }
+            });
+            return Ok(());
         }
+        // Posts WM_QUIT to the capture thread and joins it; the session, frame pool, D3D device
+        // and our staging texture are released when the thread and handler drop.
+        control.stop().map_err(map_control_error)
     }
 }
 
@@ -570,10 +592,12 @@ impl Drop for WgcStream {
 
 pub(crate) fn start_stream(item: CaptureItem, wgc: &WgcFeatures, show_cursor: bool, fps: u32, sink: Arc<dyn VideoSink>) -> CaptureResult<WgcStream> {
     let terminal = Arc::new(AtomicBool::new(false));
+    let capture_thread = Arc::new(OnceLock::new());
     let make = || Delivery::Stream(sink.clone());
-    let control = start_session(item, wgc, show_cursor, fps, &make, &terminal)?;
+    let control = start_session(item, wgc, show_cursor, fps, &make, &terminal, &capture_thread)?;
     Ok(WgcStream {
         control: Some(control),
         terminal,
+        capture_thread,
     })
 }

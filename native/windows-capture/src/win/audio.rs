@@ -305,6 +305,10 @@ impl StreamHandle for LoopbackStream {
     fn stop(&mut self) -> CaptureResult<()> {
         self.stop.store(true, Ordering::Release);
         if let Some(t) = self.thread.take() {
+            if t.thread().id() == std::thread::current().id() {
+                // Called from the sink on the loopback thread: it exits after the callback returns.
+                return Ok(());
+            }
             t.join().map_err(|_| CaptureError::internal("WASAPI loopback thread panicked"))?;
         }
         Ok(())
