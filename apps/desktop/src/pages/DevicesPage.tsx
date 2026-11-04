@@ -21,7 +21,7 @@ const KIND_ICON: Partial<Record<DeviceKind, IconName>> = { desktop: "monitor", "
 
 /** What each kind of device can actually do with CaptureOne (shown verbatim; no over-promising). */
 const KIND_ABILITIES: Partial<Record<DeviceKind, string>> = {
-  "lg-webos-tv": "Remote keys and a one-shot screenshot via LG's SSAP API after you accept the pairing prompt on the TV. Protected (DRM) content stays black.",
+  "lg-webos-tv": "Remote keys after you accept the pairing prompt on the TV, plus an experimental one-shot screenshot through an undocumented LG call (may break with firmware updates; protected content stays black).",
   "samsung-tizen-tv": "Remote keys only. Samsung TVs expose no screenshot or recording API to third-party apps.",
   "android-tv": "Install CaptureOne for Android TV to record with per-session consent. Protected content is blanked by the OS.",
   "google-tv": "Install CaptureOne for Android TV to record with per-session consent. Protected content is blanked by the OS.",
@@ -189,9 +189,10 @@ function DiscoveryCard() {
 
   const pair = async (d: DiscoveredDevice) => {
     setBusyId(d.id);
+    toast.push({ tone: "info", title: `Pairing with ${d.name}…`, message: "Accept the CaptureOne prompt on the TV within 60 seconds.", key: `pair-${d.id}`, timeout: 60_000 });
     try {
       const r = await invoke("tv_pair", { deviceId: d.id });
-      toast.push({ tone: r.paired ? "success" : "warning", title: r.paired ? `Paired with ${d.name}` : `Not paired with ${d.name}`, message: r.message });
+      toast.push({ tone: r.paired ? "success" : "warning", title: r.paired ? `Paired with ${d.name}` : `Not paired with ${d.name}`, message: r.message, key: `pair-${d.id}` });
     } catch (e) {
       app.notifyError(`Pairing with ${d.name} failed`, e);
     } finally {
@@ -202,9 +203,8 @@ function DiscoveryCard() {
   const screenshot = async (d: DiscoveredDevice) => {
     setBusyId(d.id);
     try {
-      const m = await invoke("tv_screenshot", { deviceId: d.id });
-      app.bumpLibrary();
-      toast.push({ tone: "success", title: "TV screenshot saved", message: m.fileName });
+      // Success is announced by the backend's `screenshot` event (toast + library refresh).
+      await invoke("tv_screenshot", { deviceId: d.id });
     } catch (e) {
       app.notifyError(`Screenshot from ${d.name} failed`, e);
     } finally {
@@ -270,8 +270,14 @@ function DiscoveryCard() {
                     Remote
                   </Button>
                   {lg && (
-                    <Button size="sm" icon="camera" loading={busyId === d.id} onClick={() => void screenshot(d)}>
-                      Screenshot
+                    <Button
+                      size="sm"
+                      icon="camera"
+                      loading={busyId === d.id}
+                      title="Experimental: uses an undocumented LG webOS call. Protected content is black."
+                      onClick={() => void screenshot(d)}
+                    >
+                      Screenshot (experimental)
                     </Button>
                   )}
                 </div>
@@ -294,9 +300,10 @@ export function RemoteDialog({ device, onClose }: { device: DiscoveredDevice | n
   if (!device) return null;
 
   const send = async (key: TvRemoteKey) => {
-    setLast(key);
+    setLast(`${key}…`);
     try {
       await invoke("tv_send_key", { deviceId: device.id, key });
+      setLast(key);
       setError(null);
     } catch (e) {
       const err = asFailure(e).toJSON();
@@ -346,7 +353,7 @@ export function RemoteDialog({ device, onClose }: { device: DiscoveredDevice | n
           <Key k="STOP" icon="stop" label="Stop" />
         </div>
         <p className="remote__status muted small" aria-live="polite">
-          {error ? <span className="text-danger">{error}</span> : last ? `Sent ${last}` : "Ready"}
+          {error ? <span className="text-danger">{error}</span> : last ? (last.endsWith("…") ? `Sending ${last} (first key may wait for the TV's pairing prompt)` : `Sent ${last}`) : "Ready"}
         </p>
       </div>
     </Dialog>

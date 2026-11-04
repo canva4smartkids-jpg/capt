@@ -8,6 +8,7 @@ import {
   durationLabel,
   formatLabel,
   formatResolution,
+  isTvCapture,
   queryLibrary,
   sizeLabel,
   storageRatio,
@@ -426,6 +427,11 @@ function MediaCard({ m, busy, renaming, actions }: { m: MediaMetadata; busy: boo
               {displayTitle(m)}
             </h3>
           )}
+          {isTvCapture(m) && (
+            <Badge tone="warning" icon="tv" title="Captured on a TV through an undocumented LG webOS call; protected content may be black.">
+              From TV · experimental
+            </Badge>
+          )}
           <div className="media-card__meta">
             <span>{sizeLabel(m)}</span>
             <span>{formatResolution(m)}</span>
@@ -596,7 +602,10 @@ function PreviewDialog({ m, onClose, actions, busy }: { m: MediaMetadata | null;
           {m.sourceName && (
             <div>
               <dt>Source</dt>
-              <dd>{m.sourceName}</dd>
+              <dd>
+                {m.sourceName}
+                {isTvCapture(m) && <p className="muted small">Experimental TV screenshot (undocumented LG webOS API). DRM-protected content is blanked by the TV.</p>}
+              </dd>
             </div>
           )}
           <div>

@@ -203,6 +203,13 @@ export function validateTitle(title: string): string | null {
   return null;
 }
 
+const TV_PLATFORMS = new Set(["webos", "tizen", "android-tv", "google-tv", "other-tv"]);
+
+/** True for items captured on a TV (e.g. the experimental LG webOS screenshot), not on this computer. */
+export function isTvCapture(m: Pick<MediaMetadata, "platform">): boolean {
+  return m.platform !== undefined && TV_PLATFORMS.has(m.platform);
+}
+
 /** Usage ratio of library bytes against library + free disk, clamped to 0..1. */
 export function storageRatio(totalBytes: number, freeDiskBytes: number): number {
   const denom = totalBytes + freeDiskBytes;

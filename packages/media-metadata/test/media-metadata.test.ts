@@ -7,6 +7,7 @@ import {
   exportFileName,
   formatLabel,
   formatResolution,
+  isTvCapture,
   parseMediaList,
   queryLibrary,
   removeMedia,
@@ -120,6 +121,11 @@ describe("list helpers", () => {
     expect(summarizeLibrary([base, shot])).toMatchObject({ total: 2, videos: 1, screenshots: 1, totalBytes: 5_300_000, totalDurationMs: 65_000 });
     expect(storageRatio(25, 75)).toBe(0.25);
     expect(storageRatio(0, 0)).toBe(0);
+  });
+  it("flags TV captures", () => {
+    expect(isTvCapture({ platform: "webos" })).toBe(true);
+    expect(isTvCapture({ platform: "linux" })).toBe(false);
+    expect(isTvCapture({})).toBe(false);
   });
   it("builds export names and validates titles", () => {
     expect(exportFileName(shot)).toBe("Bug report.png");

@@ -199,6 +199,38 @@ describe("Devices page", () => {
   });
 });
 
+describe("Devices page with the companion hub", () => {
+  it("turns the hub on and shows address, pairing code and paired devices", async () => {
+    backend();
+    let enabled = false;
+    const st = () => (enabled ? { enabled: true, url: "http://192.168.1.20:47800", pairingCode: "482913", pairedDevices: [{ name: "Living room TV", deviceKind: "lg-webos-tv", pairedAt: "2026-11-04T12:00:00Z" }] } : { enabled: false, url: null, pairingCode: null, pairedDevices: [] });
+    handlers.set("hub_status", st);
+    handlers.set("hub_set_enabled", (a) => {
+      enabled = Boolean(a.enabled);
+      return st();
+    });
+    at("#/devices");
+    const toggle = (await screen.findByRole("switch", { name: /Allow companions/ })) as HTMLButtonElement;
+    await waitFor(() => expect(toggle.disabled).toBe(false));
+    await userEvent.click(toggle);
+    await waitFor(() => expect(callsTo("hub_set_enabled")[0]?.args).toEqual({ enabled: true }));
+    expect(await screen.findByLabelText("Pairing code 4 8 2 9 1 3")).toBeTruthy();
+    expect(screen.getByText("Listening at http://192.168.1.20:47800")).toBeTruthy();
+    expect(screen.getByText("Living room TV")).toBeTruthy();
+    expect(screen.getByText(/LG TV \(webOS\) · paired/)).toBeTruthy();
+  });
+});
+
+describe("Library TV captures", () => {
+  it("labels screenshots taken on a TV as experimental", async () => {
+    backend();
+    handlers.set("library_list", () => [{ ...shot, id: "tv-1", title: "Living room — TV screenshot (experimental)", platform: "webos", sourceName: "Living room (LG webOS TV)" }, video]);
+    at("#/library");
+    expect(await screen.findByText("From TV · experimental")).toBeTruthy();
+    expect(screen.getAllByText("From TV · experimental")).toHaveLength(1);
+  });
+});
+
 describe("Region window", () => {
   it("drags a selection and confirms it in physical pixels; Esc cancels", async () => {
     handlers.set("get_source_thumbnail", () => "data:image/png;base64,iVBORw0KGgo=");
