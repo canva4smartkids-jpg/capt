@@ -15,6 +15,7 @@ use capture_core::{
     CaptureTarget, PermissionKind, PermissionStatus, Platform, SourceKind, StreamHandle, VideoFrame, VideoSink,
     VideoStreamOptions,
 };
+use objc2::rc::autoreleasepool;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -64,10 +65,42 @@ impl CaptureBackend for MacCaptureBackend {
     }
 
     fn capabilities(&self) -> CapabilityReport {
-        capability_report(&host::host_info(self.os), capture_core::now_iso8601())
+        autoreleasepool(|_| capability_report(&host::host_info(self.os), capture_core::now_iso8601()))
     }
 
     fn permission_status(&self, kind: PermissionKind) -> PermissionStatus {
+        autoreleasepool(|_| self.permission_status_inner(kind))
+    }
+
+    fn request_permission(&self, kind: PermissionKind) -> CaptureResult<PermissionStatus> {
+        autoreleasepool(|_| self.request_permission_inner(kind))
+    }
+
+    fn list_sources(&self, kinds: &[SourceKind]) -> CaptureResult<Vec<CaptureSource>> {
+        autoreleasepool(|_| content::list_sources(kinds))
+    }
+
+    fn screenshot(&self, target: &CaptureTarget, show_cursor: bool) -> CaptureResult<VideoFrame> {
+        autoreleasepool(|_| screenshot::capture(self.os, target, show_cursor))
+    }
+
+    fn start_video(&self, target: &CaptureTarget, opts: &VideoStreamOptions, sink: Arc<dyn VideoSink>) -> CaptureResult<Box<dyn StreamHandle>> {
+        if opts.fps == 0 {
+            return Err(CaptureError::invalid_config("fps must be positive"));
+        }
+        autoreleasepool(|_| stream::start_video(self.os, target, opts.fps, opts.show_cursor, sink))
+    }
+
+    fn start_system_audio(&self, opts: &AudioStreamOptions, sink: Arc<dyn AudioSink>) -> CaptureResult<Box<dyn StreamHandle>> {
+        if opts.device_id.is_some() {
+            log::info!("macos-capture: system audio ignores device_id (ScreenCaptureKit captures the system mix)");
+        }
+        autoreleasepool(|_| stream::start_system_audio(self.os, opts.sample_rate, opts.channels, sink))
+    }
+}
+
+impl MacCaptureBackend {
+    fn permission_status_inner(&self, kind: PermissionKind) -> PermissionStatus {
         match kind {
             PermissionKind::ScreenCapture | PermissionKind::SystemAudio => {
                 screen_status(kind, self.os, permission::screen_preflight(), self.screen_requested.load(Ordering::SeqCst))
@@ -77,10 +110,10 @@ impl CaptureBackend for MacCaptureBackend {
         }
     }
 
-    fn request_permission(&self, kind: PermissionKind) -> CaptureResult<PermissionStatus> {
+    fn request_permission_inner(&self, kind: PermissionKind) -> CaptureResult<PermissionStatus> {
         match kind {
             PermissionKind::ScreenCapture | PermissionKind::SystemAudio => {
-                let current = self.permission_status(kind);
+                let current = self.permission_status_inner(kind);
                 if matches!(current.state, capture_core::PermissionState::Granted | capture_core::PermissionState::NotApplicable) {
                     return Ok(current);
                 }
@@ -94,27 +127,5 @@ impl CaptureBackend for MacCaptureBackend {
             }
             other => Ok(other_status(other, self.os)),
         }
-    }
-
-    fn list_sources(&self, kinds: &[SourceKind]) -> CaptureResult<Vec<CaptureSource>> {
-        content::list_sources(kinds)
-    }
-
-    fn screenshot(&self, target: &CaptureTarget, show_cursor: bool) -> CaptureResult<VideoFrame> {
-        screenshot::capture(self.os, target, show_cursor)
-    }
-
-    fn start_video(&self, target: &CaptureTarget, opts: &VideoStreamOptions, sink: Arc<dyn VideoSink>) -> CaptureResult<Box<dyn StreamHandle>> {
-        if opts.fps == 0 {
-            return Err(CaptureError::invalid_config("fps must be positive"));
-        }
-        stream::start_video(self.os, target, opts.fps, opts.show_cursor, sink)
-    }
-
-    fn start_system_audio(&self, opts: &AudioStreamOptions, sink: Arc<dyn AudioSink>) -> CaptureResult<Box<dyn StreamHandle>> {
-        if opts.device_id.is_some() {
-            log::info!("macos-capture: system audio ignores device_id (ScreenCaptureKit captures the system mix)");
-        }
-        stream::start_system_audio(self.os, opts.sample_rate, opts.channels, sink)
     }
 }
