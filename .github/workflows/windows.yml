@@ -83,6 +83,7 @@ jobs:
       # is listed or a display has zero size.
       - name: "Smoke: capabilities, permissions, sources"
         run: |
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           & $env:SMOKE info | Tee-Object -FilePath "$env:OUT\info.json"
           if ($LASTEXITCODE -ne 0) { throw "wgc_smoke info failed" }
           $info = Get-Content -Raw "$env:OUT\info.json" | ConvertFrom-Json
@@ -212,7 +213,8 @@ jobs:
         id: sources
         if: steps.detect.outputs.ready == 'true'
         run: |
-          $raw = (& $env:CLI sources 2>&1 | Out-String)
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $raw = (& $env:CLI sources | Out-String)
           if ($LASTEXITCODE -ne 0) { throw "captureone-cli sources failed: $raw" }
           $raw | Out-File "$env:OUT\sources.json" -Encoding utf8
           Write-Host $raw
