@@ -31,9 +31,19 @@ echo "cli: $CAPTUREONE_CLI  work: $CAPTUREONE_TEST_WORK" >&2
 
 PIDS=()
 STARTED_PULSE=0
+PULSE_MODULE=""
+PREV_SINK=""
+PREV_SOURCE=""
 cleanup() {
   for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done
-  if [ "$STARTED_PULSE" = 1 ]; then pulseaudio --kill 2>/dev/null || true; fi
+  if [ "$STARTED_PULSE" = 1 ]; then
+    pulseaudio --kill 2>/dev/null || true
+  else
+    # Using someone's existing server: put their defaults back and remove our sink.
+    [ -n "$PREV_SINK" ] && pactl set-default-sink "$PREV_SINK" 2>/dev/null || true
+    [ -n "$PREV_SOURCE" ] && pactl set-default-source "$PREV_SOURCE" 2>/dev/null || true
+    [ -n "$PULSE_MODULE" ] && pactl unload-module "$PULSE_MODULE" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT
 
@@ -54,8 +64,10 @@ if ! pactl info >/dev/null 2>&1; then
   STARTED_PULSE=1
   for _ in $(seq 50); do pactl info >/dev/null 2>&1 && break; sleep 0.1; done
 fi
+PREV_SINK="$(pactl info 2>/dev/null | sed -n 's/^Default Sink: //p')"
+PREV_SOURCE="$(pactl info 2>/dev/null | sed -n 's/^Default Source: //p')"
 if ! pactl list short sinks | grep -q captureone_test; then
-  pactl load-module module-null-sink sink_name=captureone_test sink_properties=device.description=CaptureOneTest >/dev/null
+  PULSE_MODULE="$(pactl load-module module-null-sink sink_name=captureone_test sink_properties=device.description=CaptureOneTest)"
 fi
 pactl set-default-sink captureone_test
 pactl set-default-source captureone_test.monitor
