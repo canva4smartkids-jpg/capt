@@ -1,0 +1,345 @@
+# Windows workstream CI (owner: windows). Everything here runs on a real Windows Server runner:
+#   backend  — unit tests + clippy, then the real Windows Graphics Capture / WASAPI backend is
+#              exercised by native/windows-capture/examples/wgc_smoke.rs and its output media
+#              are validated with ffprobe.
+#   cli      — builds captureone-cli (engine workstream) and records/screenshots through it,
+#              validated with ffprobe. Skipped with a warning while the CLI lacks the commands.
+#   desktop  — builds the Tauri desktop app NSIS installer (desktop-app workstream). Skipped with a
+#              warning while the app sources are incomplete.
+name: windows
+
+on:
+  push:
+    branches: ["claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  backend:
+    name: Backend - tests and real WGC/WASAPI smoke on the runner
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      OUT: ${{ github.workspace }}\ci-out\backend
+      SMOKE: ${{ github.workspace }}\target\release\examples\wgc_smoke.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-backend
+
+      # Records whether this runner session can capture at all (interactive session, display,
+      # GPU/WARP adapter, audio devices) so failures below can be attributed correctly.
+      - name: Runner session facts
+        run: |
+          New-Item -ItemType Directory -Force $env:OUT | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms
+          $os = Get-CimInstance Win32_OperatingSystem
+          $facts = [ordered]@{
+            os           = "$($os.Caption) $($os.Version) (build $($os.BuildNumber))"
+            sessionId    = (Get-Process -Id $PID).SessionId
+            interactive  = [Environment]::UserInteractive
+            user         = [Environment]::UserName
+            screens      = @([System.Windows.Forms.Screen]::AllScreens | ForEach-Object { "$($_.DeviceName) $($_.Bounds.Width)x$($_.Bounds.Height) primary=$($_.Primary)" })
+            gpus         = @(Get-CimInstance Win32_VideoController | ForEach-Object { "$($_.Name) [$($_.VideoModeDescription)]" })
+            soundDevices = @(Get-CimInstance Win32_SoundDevice -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
+            audioService = "$((Get-Service Audiosrv -ErrorAction SilentlyContinue).Status)"
+          }
+          $facts | ConvertTo-Json -Depth 4 | Tee-Object -FilePath "$env:OUT\runner-facts.json"
+
+      # Platform-independent logic (PCM conversion, stride removal, ids, OS-build gating,
+      # permission decisions, region cropping, pacing) + the shared contract tests.
+      - name: Unit tests (capture-core + windows-capture-backend)
+        run: cargo test -p capture-core -p windows-capture-backend
+
+      - name: Clippy (windows-capture-backend, warnings are errors)
+        run: cargo clippy -p windows-capture-backend --all-targets -- -D warnings
+
+      - name: Build backend smoke tool (release)
+        run: cargo build -p windows-capture-backend --example wgc_smoke --release
+
+      - name: Install ffmpeg
+        run: ./native/windows-capture/ci/Install-FFmpeg.ps1
+
+      # Real CaptureBackend calls: capability report (WGC runtime probes, OS build gates),
+      # permission states, display + window enumeration, render endpoints. Fails if no display
+      # is listed or a display has zero size.
+      - name: "Smoke: capabilities, permissions, sources"
+        run: |
+          & $env:SMOKE info | Tee-Object -FilePath "$env:OUT\info.json"
+          if ($LASTEXITCODE -ne 0) { throw "wgc_smoke info failed" }
+          $info = Get-Content -Raw "$env:OUT\info.json" | ConvertFrom-Json
+          $d = $info.displays[0]
+          "DISPLAY_W=$($d.width)", "DISPLAY_H=$($d.height)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "### Windows backend on the runner" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          "- OS: $($info.capabilities.osName) $($info.capabilities.osVersion)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          "- Displays: $(@($info.displays).Count) (first: $($d.id) $($d.width)x$($d.height)); windows: $(@($info.windows).Count)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          foreach ($k in 'displayCapture', 'windowCapture', 'cursorCapture', 'systemAudio') {
+            $f = $info.capabilities.features.$k
+            "- ${k}: $($f.level) $($f.reason)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          }
+
+      # One WGC frame of the first display -> PNG; ffprobe must report png at exactly the
+      # physical size list_sources reported.
+      - name: "Smoke: display screenshot (WGC) -> PNG"
+        run: |
+          & $env:SMOKE screenshot "$env:OUT\display.png" | Tee-Object -FilePath "$env:OUT\screenshot.json"
+          if ($LASTEXITCODE -ne 0) { throw "wgc_smoke screenshot failed" }
+          ./native/windows-capture/ci/Assert-Media.ps1 -Path "$env:OUT\display.png" -Codec png -Width $env:DISPLAY_W -Height $env:DISPLAY_H
+
+      # Region target = display capture cropped to 200x120 at (10,10).
+      - name: "Smoke: region screenshot -> 200x120 PNG"
+        run: |
+          & $env:SMOKE region "$env:OUT\region.png" | Tee-Object -FilePath "$env:OUT\region.json"
+          if ($LASTEXITCODE -ne 0) { throw "wgc_smoke region failed" }
+          ./native/windows-capture/ci/Assert-Media.ps1 -Path "$env:OUT\region.png" -Codec png -Width 200 -Height 120
+
+      # Window target: Notepad is found through EnumWindows filtering (by title/app name) and
+      # captured from its HWND.
+      - name: "Smoke: window screenshot (Notepad) -> PNG"
+        run: |
+          $np = Start-Process notepad.exe -PassThru
+          try {
+            & $env:SMOKE window notepad "$env:OUT\notepad-window.png" | Tee-Object -FilePath "$env:OUT\window.json"
+            if ($LASTEXITCODE -ne 0) { throw "wgc_smoke window failed" }
+            ./native/windows-capture/ci/Assert-Media.ps1 -Path "$env:OUT\notepad-window.png" -Codec png
+          } finally { Stop-Process -Id $np.Id -Force -ErrorAction SilentlyContinue }
+
+      # start_video on the first display for 5 s (cursor moved to force compositor updates),
+      # paced to 30 fps CFR and encoded with libx264 by the smoke tool; ffprobe must report
+      # h264, the display size, duration 5.0 +/- 0.1 s and >= 150 frames.
+      - name: "Smoke: 5 s display stream -> H.264 MP4"
+        run: |
+          & $env:SMOKE record 5 "$env:OUT\wgc-stream.mp4" | Tee-Object -FilePath "$env:OUT\record.json"
+          if ($LASTEXITCODE -ne 0) { throw "wgc_smoke record failed" }
+          ./native/windows-capture/ci/Assert-Media.ps1 -Path "$env:OUT\wgc-stream.mp4" -Codec h264 -Width $env:DISPLAY_W -Height $env:DISPLAY_H -MinDuration 4.9 -MaxDuration 5.1 -MinFrames 150
+
+      # Window-closed detection: a Notepad stream must end with StreamEvent::SourceClosed after
+      # the process is killed, and stop() afterwards must succeed.
+      - name: "Smoke: SourceClosed when the captured window closes"
+        run: |
+          & $env:SMOKE closed-test | Tee-Object -FilePath "$env:OUT\closed-test.json"
+          if ($LASTEXITCODE -ne 0) { throw "wgc_smoke closed-test failed" }
+
+      # Cleanup: three start/stop cycles (no frames after stop, double stop is harmless) and a
+      # drop-without-stop.
+      - name: "Smoke: stream start/stop/drop cleanup"
+        run: |
+          & $env:SMOKE restart-test | Tee-Object -FilePath "$env:OUT\restart-test.json"
+          if ($LASTEXITCODE -ne 0) { throw "wgc_smoke restart-test failed" }
+
+      # WASAPI loopback. Passes if audio is captured, OR if the runner has no audio output
+      # device and the backend reports that honestly (SOURCE_NOT_FOUND + systemAudio
+      # unsupported). Hosted runners normally have no audio endpoint, so the second outcome is
+      # expected there; the JSON records which one happened.
+      - name: "Smoke: system audio (WASAPI loopback)"
+        run: |
+          & $env:SMOKE audio 3 "$env:OUT\loopback.wav" | Tee-Object -FilePath "$env:OUT\audio.json"
+          if ($LASTEXITCODE -ne 0) { throw "wgc_smoke audio failed" }
+          $a = Get-Content -Raw "$env:OUT\audio.json" | ConvertFrom-Json
+          "- system audio: mode=$($a.mode) capability=$($a.capability)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          if ($a.mode -eq 'captured' -and (Test-Path "$env:OUT\loopback.wav")) {
+            & ffprobe -v error -show_streams -show_format -of json "$env:OUT\loopback.wav" | Tee-Object -FilePath "$env:OUT\loopback.wav.ffprobe.json"
+          }
+
+      - name: Upload backend smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-backend-smoke
+          path: ci-out/backend
+          if-no-files-found: warn
+
+  cli:
+    name: captureone-cli - sources, PNG screenshot, 5 s H.264 recording
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      OUT: ${{ github.workspace }}\ci-out\cli
+      CLI: ${{ github.workspace }}\target\release\captureone-cli.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-cli
+
+      - name: Build captureone-cli (release)
+        run: cargo build -p captureone-cli --release
+
+      - name: Install ffmpeg
+        run: ./native/windows-capture/ci/Install-FFmpeg.ps1
+
+      # The CLI belongs to the engine workstream; until it exposes the commands, the capture
+      # steps are skipped with a visible warning instead of failing this workflow.
+      - name: Detect CLI commands
+        id: detect
+        run: |
+          New-Item -ItemType Directory -Force $env:OUT | Out-Null
+          $help = (& $env:CLI --help 2>&1 | Out-String)
+          $help | Out-File "$env:OUT\cli-help.txt" -Encoding utf8
+          Write-Host $help
+          $ready = ($help -match 'sources') -and ($help -match 'screenshot') -and ($help -match 'record')
+          "ready=$($ready.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          if (-not $ready) {
+            Write-Host "::warning::captureone-cli does not expose sources/screenshot/record yet; CLI capture verification skipped"
+            "- captureone-cli capture verification **skipped**: commands not implemented yet" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          }
+          $global:LASTEXITCODE = 0
+
+      # Lists sources through the engine + this backend; picks the first display id from the
+      # JSON (falls back to index "0", which the Windows backend resolves to the primary display).
+      - name: "CLI: sources"
+        id: sources
+        if: steps.detect.outputs.ready == 'true'
+        run: |
+          $raw = (& $env:CLI sources 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0) { throw "captureone-cli sources failed: $raw" }
+          $raw | Out-File "$env:OUT\sources.json" -Encoding utf8
+          Write-Host $raw
+          $id = '0'
+          try {
+            $j = $raw | ConvertFrom-Json -NoEnumerate
+            $list = if ($j -is [array]) { $j } elseif ($j.sources) { $j.sources } elseif ($j.displays) { $j.displays } else { @() }
+            $d = @($list | Where-Object { -not $_.kind -or $_.kind -eq 'display' }) | Select-Object -First 1
+            if ($d -and $d.id) { $id = "$($d.id)" }
+          } catch { Write-Host "::warning::sources output is not JSON; using display index 0" }
+          Write-Host "first display id: $id"
+          "display_id=$id" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: "CLI: screenshot -> PNG"
+        if: steps.detect.outputs.ready == 'true'
+        run: |
+          $dir = "$env:OUT\screenshot"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          & $env:CLI screenshot --target "display:${{ steps.sources.outputs.display_id }}" --out $dir | Tee-Object -FilePath "$env:OUT\screenshot.json"
+          if ($LASTEXITCODE -ne 0) { throw "captureone-cli screenshot failed" }
+          $png = Get-ChildItem $dir -Recurse -Include *.png | Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $png) { throw "no PNG produced in $dir" }
+          ./native/windows-capture/ci/Assert-Media.ps1 -Path $png.FullName -Codec png
+
+      - name: "CLI: record 5 s H.264 -> MP4"
+        if: steps.detect.outputs.ready == 'true'
+        run: |
+          $dir = "$env:OUT\record"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          & $env:CLI record --target "display:${{ steps.sources.outputs.display_id }}" --duration 5 --codec h264 --out $dir | Tee-Object -FilePath "$env:OUT\record.json"
+          if ($LASTEXITCODE -ne 0) { throw "captureone-cli record failed" }
+          $mp4 = Get-ChildItem $dir -Recurse -Include *.mp4 | Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $mp4) { throw "no MP4 produced in $dir" }
+          ./native/windows-capture/ci/Assert-Media.ps1 -Path $mp4.FullName -Codec h264 -MinDuration 4.0 -MaxDuration 6.5
+
+      - name: Upload CLI evidence and binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-cli
+          path: |
+            ci-out/cli
+            target/release/captureone-cli.exe
+          if-no-files-found: warn
+
+  desktop:
+    name: Desktop app - Tauri NSIS installer
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check desktop app sources
+        id: check
+        run: |
+          $ok = (Test-Path apps/desktop/package.json) -and (Test-Path apps/desktop/src-tauri/tauri.conf.json) -and (Test-Path apps/desktop/src-tauri/Cargo.toml) -and (Test-Path apps/desktop/index.html)
+          "ok=$($ok.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          if (-not $ok) {
+            Write-Host "::warning::apps/desktop is incomplete (package.json, src-tauri/tauri.conf.json, src-tauri/Cargo.toml, index.html); installer build skipped"
+            "- Desktop installer build **skipped**: app sources incomplete" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          }
+
+      - uses: pnpm/action-setup@v4
+        if: steps.check.outputs.ok == 'true'
+        with:
+          version: 10.28.0
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.check.outputs.ok == 'true'
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.check.outputs.ok == 'true'
+        with:
+          key: windows-desktop
+
+      - name: Install ffmpeg
+        if: steps.check.outputs.ok == 'true'
+        run: ./native/windows-capture/ci/Install-FFmpeg.ps1
+
+      # If tauri.conf.json bundles ffmpeg/ffprobe as sidecars (bundle.externalBin), provide them
+      # under the target-triple names Tauri expects.
+      - name: Provide sidecar binaries declared in tauri.conf.json
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          $conf = Get-Content -Raw apps/desktop/src-tauri/tauri.conf.json | ConvertFrom-Json
+          $bins = @($conf.bundle.externalBin) | Where-Object { $_ }
+          foreach ($b in $bins) {
+            $name = Split-Path -Leaf $b
+            $src = if ($name -like '*ffprobe*') { $env:FFPROBE } elseif ($name -like '*ffmpeg*') { $env:FFMPEG } else { $null }
+            if (-not $src) { Write-Host "::warning::no CI source for sidecar '$b'"; continue }
+            $dest = Join-Path 'apps/desktop/src-tauri' "$b-x86_64-pc-windows-msvc.exe"
+            New-Item -ItemType Directory -Force (Split-Path -Parent $dest) | Out-Null
+            Copy-Item $src $dest -Force
+            Write-Host "sidecar $b <- $src"
+          }
+
+      - name: Install JS dependencies
+        if: steps.check.outputs.ok == 'true'
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build workspace packages
+        if: steps.check.outputs.ok == 'true'
+        run: pnpm -r --filter "./packages/*" run --if-present build
+
+      - name: Build NSIS installer (tauri build)
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          pnpm --filter ./apps/desktop tauri build --bundles nsis
+          if ($LASTEXITCODE -ne 0) { throw "tauri build failed" }
+          $installers = @(Get-ChildItem -Path target/release/bundle/nsis, apps/desktop/src-tauri/target/release/bundle/nsis -Filter *.exe -ErrorAction SilentlyContinue)
+          if ($installers.Count -eq 0) { throw "no NSIS installer was produced" }
+          foreach ($i in $installers) {
+            "- NSIS installer: ``$($i.Name)`` ($([math]::Round($i.Length / 1MB, 1)) MB)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          }
+
+      - name: Upload NSIS installer
+        if: steps.check.outputs.ok == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-nsis-installer
+          path: |
+            target/release/bundle/nsis/*.exe
+            apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

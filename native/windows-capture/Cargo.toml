@@ -12,6 +12,11 @@ path = "src/lib.rs"
 [dependencies]
 capture-core.workspace = true
 
+# Only used by examples/wgc_smoke.rs (runtime smoke test on the Windows CI runner).
+[dev-dependencies]
+serde_json.workspace = true
+image.workspace = true
+
 # Windows-only dependencies: on every other OS this crate builds to a library that only
 # contains the platform-independent helpers (PCM conversion, id parsing, capability gating).
 [target.'cfg(windows)'.dependencies]
