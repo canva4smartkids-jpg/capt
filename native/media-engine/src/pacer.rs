@@ -42,12 +42,15 @@ impl PacerCore {
         self.emitted
     }
 
-    /// Frames that should have been emitted by active time `t`: frame k covers [k/fps, (k+1)/fps).
+    /// Frames that should have been emitted by active time `t`. Frame k (pts k/fps) is emitted
+    /// once t >= (k - 0.5)/fps (frame 0 immediately), so a recording of T active seconds
+    /// contains exactly round(T * fps) frames and each frame shows content captured within
+    /// half a frame of its presentation time.
     pub fn frames_due(&self, active_sec: f64) -> u64 {
         if active_sec < 0.0 {
             return 0;
         }
-        let due = (active_sec * self.fps as f64 + 1e-9).floor() as u64 + 1;
+        let due = ((active_sec * self.fps as f64 + 0.5 + 1e-9).floor() as u64).max(1);
         self.max_frames.map_or(due, |m| due.min(m))
     }
 
@@ -359,10 +362,11 @@ mod tests {
         let p = PacerCore::new(30, None);
         assert_eq!(p.frames_due(-0.1), 0);
         assert_eq!(p.frames_due(0.0), 1);
-        assert_eq!(p.frames_due(0.0333), 1);
-        assert_eq!(p.frames_due(1.0 / 30.0), 2);
-        assert_eq!(p.frames_due(5.0), 151);
+        assert_eq!(p.frames_due(0.0166), 1);
+        assert_eq!(p.frames_due(1.5 / 30.0), 2);
+        assert_eq!(p.frames_due(5.0), 150);
         assert_eq!(p.final_target(5.0), 150);
+        assert_eq!(p.final_target(5.01), 150);
         let capped = PacerCore::new(30, Some(2.0));
         assert_eq!(capped.frames_due(10.0), 60);
         assert_eq!(capped.final_target(10.0), 60);
@@ -403,7 +407,7 @@ mod tests {
                 }
             }
             let total = p.final_target(active);
-            assert!((total as i64 - 150).abs() <= 1, "total {total}");
+            assert_eq!(total, 150, "5 s active at 30 fps");
             if backend_fps < 30.0 {
                 assert!(dup > new, "slow backend must be duplicated (new {new}, dup {dup})");
             } else {
@@ -493,7 +497,7 @@ mod tests {
         ctl.finish(total);
         let emitted = h.join().unwrap();
         let expect = (total * 30.0).round() as u64;
-        assert!(emitted >= expect && emitted <= expect + 1, "emitted {emitted}, expected ~{expect}");
+        assert_eq!(emitted, expect.max(1));
         assert_eq!(queue.pending_frames(), emitted);
     }
 }

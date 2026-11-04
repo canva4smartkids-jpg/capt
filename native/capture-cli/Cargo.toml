@@ -11,3 +11,19 @@ path = "src/main.rs"
 
 [dependencies]
 capture-core.workspace = true
+media-engine.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+parking_lot.workspace = true
+crossbeam-channel.workspace = true
+log.workspace = true
+ctrlc = { version = "3", features = ["termination"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+linux-capture.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-capture-backend.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+macos-capture.workspace = true

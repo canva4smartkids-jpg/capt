@@ -208,8 +208,9 @@ pub fn list_input_devices() -> CaptureResult<Vec<AudioDeviceInfo>> {
     Ok(out)
 }
 
+/// True if a default input device exists and reports a usable configuration.
 pub fn has_input_device() -> bool {
-    cpal::default_host().default_input_device().is_some()
+    cpal::default_host().default_input_device().map(|d| d.default_input_config().is_ok()).unwrap_or(false)
 }
 
 fn find_input_device(host: &cpal::Host, id: Option<&str>) -> CaptureResult<cpal::Device> {

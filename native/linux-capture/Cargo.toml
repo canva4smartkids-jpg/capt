@@ -7,3 +7,10 @@ license.workspace = true
 
 [dependencies]
 capture-core.workspace = true
+log.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+x11rb = { version = "0.13", features = ["shm", "randr", "xfixes"] }
+libc = "0.2"
+libpulse-binding = "2"
+libpulse-simple-binding = "2"
