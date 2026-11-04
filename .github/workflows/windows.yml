@@ -345,9 +345,13 @@ jobs:
           Write-Host "installer: $($inst.FullName)"
           $p = Start-Process -FilePath $inst.FullName -ArgumentList '/S' -Wait -PassThru
           Write-Host "install exit code: $($p.ExitCode)"
-          $roots = @("$env:LOCALAPPDATA\Programs", 'C:\Program Files', 'C:\Program Files (x86)') | Where-Object { Test-Path $_ }
-          $exe = Get-ChildItem -Path $roots -Recurse -Filter CaptureOne.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $exe) { throw "CaptureOne.exe not found after silent install" }
+          # Tauri NSIS per-user installs go to %LOCALAPPDATA%\<productName>; per-machine to Program Files.
+          # The main exe is named after productName or the cargo binary, so match any non-uninstaller exe.
+          $roots = @("$env:LOCALAPPDATA\CaptureOne", "$env:LOCALAPPDATA\Programs\CaptureOne", "$env:ProgramFiles\CaptureOne") | Where-Object { Test-Path $_ }
+          Write-Host "install roots found: $($roots -join ', ')"
+          $exe = Get-ChildItem -Path $roots -Filter *.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch 'uninstall' } | Select-Object -First 1
+          if (-not $exe) { Get-ChildItem -Path $roots -ErrorAction SilentlyContinue | Format-Table Name, Length | Out-String | Write-Host; throw "CaptureOne exe not found after silent install" }
+          Write-Host "installed exe: $($exe.FullName)"
           Write-Host "installed: $($exe.FullName) ($($exe.Length) bytes)"
           $dir = $exe.DirectoryName
           $proc = Start-Process -FilePath $exe.FullName -PassThru

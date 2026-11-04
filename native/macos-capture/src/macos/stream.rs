@@ -221,7 +221,7 @@ impl StreamShared {
 
     fn note_transient(&self, e: &CaptureError) {
         let n = self.transient_failures.fetch_add(1, Ordering::Relaxed);
-        if n < 5 || n % 500 == 0 {
+        if n < 5 || n.is_multiple_of(500) {
             log::warn!("macos-capture: skipped a sample ({} so far): {}", n + 1, e.message);
         }
     }
