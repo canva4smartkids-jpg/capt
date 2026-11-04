@@ -1,0 +1,69 @@
+name: linux-engine
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+    paths:
+      - "native/capture-core/**"
+      - "native/media-engine/**"
+      - "native/linux-capture/**"
+      - "native/capture-cli/**"
+      - "packages/settings/presets.json"
+      - "tests/integration/desktop/**"
+      - ".github/workflows/linux.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  engine:
+    name: Engine unit tests + real X11/PulseAudio recording tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System packages (ffmpeg, Xvfb, PulseAudio, ALSA/pulse plugin, build deps)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg xvfb x11-utils xterm pulseaudio pulseaudio-utils libasound2-plugins \
+            libpulse-dev libasound2-dev pkg-config jq
+          ffmpeg -hide_banner -version | head -1
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Unit tests (media-engine, linux-capture, captureone-cli)
+        run: cargo test -p media-engine -p linux-capture -p captureone-cli
+
+      - name: Build CLI (release)
+        run: cargo build --release -p captureone-cli
+
+      - name: Integration tests (Xvfb 1920x1080 + PulseAudio null sink)
+        env:
+          CAPTUREONE_CLI: ${{ github.workspace }}/target/release/captureone-cli
+          CAPTUREONE_TEST_WORK: ${{ runner.temp }}/captureone-it
+          CAPTUREONE_MEMORY_SECONDS: "40"
+          CAPTUREONE_NO_ENCODER_CACHE: "1"
+        run: |
+          # The tmpfs disk-full test needs root for mount(2).
+          sudo --preserve-env=CAPTUREONE_CLI,CAPTUREONE_TEST_WORK,CAPTUREONE_MEMORY_SECONDS,CAPTUREONE_NO_ENCODER_CACHE,PATH \
+            bash tests/integration/desktop/run.sh --memory
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-engine-results
+          path: |
+            ${{ runner.temp }}/captureone-it/results.json
+            ${{ runner.temp }}/captureone-it/memory.json
+          if-no-files-found: warn

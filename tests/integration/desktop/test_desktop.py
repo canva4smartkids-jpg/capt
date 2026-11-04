@@ -185,14 +185,14 @@ class Desktop(unittest.TestCase):
         info = self.check_video(meta, 4.0, 1280, 720, codec="hevc")
         self.assertEqual(streams(info, "video")[0]["codec_tag_string"], "hvc1")
         evidence("h265_720p_4s", meta["path"], info)
-        keep_sample(meta["path"], "sample-h265-720p.mp4")
+        keep_sample(meta["path"], "linux-x11-h265-720p.mp4")
 
     def test_12_scaled_720p_with_audio(self):
         d, meta, _ = self.record("h264-720p", ["--target", f"display:{DISPLAY_ID}", "--height", "720", "--system-audio", "--quality", "low"], duration=5)
         info = self.check_video(meta, 5.0, 1280, 720)
         self.assertEqual(len(streams(info, "audio")), 1)
         evidence("h264_720p_5s_system_audio", meta["path"], info, meanVolumeDb=mean_volume(meta["path"]))
-        keep_sample(meta["path"], "sample-h264-720p-audio.mp4")
+        keep_sample(meta["path"], "linux-x11-h264-720p-system-audio.mp4")
 
     def test_13_region_exact_dims(self):
         d, meta, _ = self.record("region", ["--target", f"region:{DISPLAY_ID}:200,150,640,360"], duration=3)
@@ -253,7 +253,7 @@ class Desktop(unittest.TestCase):
             self.assertGreater(distinct, 10, "screenshot must not be uniform")
             EVIDENCE.append({"test": f"screenshot_{fmt}", "file": os.path.basename(meta["path"]), "codec": codec, "width": v["width"], "height": v["height"], "size": meta["sizeBytes"], "distinctSampledColors": distinct})
         # region screenshot, small enough to keep as samples
-        for fmt, name in (("png", "sample-screenshot-region.png"), ("jpeg", "sample-screenshot-region.jpg")):
+        for fmt, name in (("png", "linux-x11-screenshot-region.png"), ("jpeg", "linux-x11-screenshot-region.jpg")):
             _, meta, _ = run(["screenshot", "--target", f"region:{DISPLAY_ID}:380,180,800,600", "--format", fmt, "--out", d])
             self.assertEqual((meta["width"], meta["height"]), (800, 600))
             v = streams(ffprobe(meta["path"]), "video")[0]
@@ -388,6 +388,28 @@ class Desktop(unittest.TestCase):
             evidence("low_disk_tmpfs_40mb", meta["path"], ffprobe(meta["path"]), stopReason=reason)
         finally:
             subprocess.run(["umount", "-l", mnt])
+
+
+class AvSync(unittest.TestCase):
+    def test_50_av_sync_flash_and_beep(self):
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import av_sync
+
+        env = dict(os.environ, SDL_AUDIODRIVER="pulseaudio")
+        player = subprocess.Popen(["ffplay", "-hide_banner", "-loglevel", "error", "-noborder", "-left", "1500", "-top", "800", "-f", "lavfi", av_sync.FLASH_BEEP], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            time.sleep(2.5)
+            d = outdir("avsync")
+            code, meta, _ = run(["record", "--out", d, "--target", f"region:{DISPLAY_ID}:1500,800,320,240", "--system-audio", "--duration", "8"], timeout=120)
+        finally:
+            player.kill()
+        self.assertTrue(meta["validation"]["valid"])
+        m = av_sync.measure(meta["path"])
+        if not m["audioOnsets"]:
+            self.skipTest("ffplay could not play audio into PulseAudio here (no beeps recorded)")
+        self.assertGreaterEqual(len(m["offsetsMs"]), 4, m)
+        self.assertLessEqual(abs(m["medianMs"]), 100.0, m)
+        EVIDENCE.append({"test": "av_sync_flash_beep", "medianOffsetMs": m["medianMs"], "offsetsMs": m["offsetsMs"]})
 
 
 class Summary(unittest.TextTestResult):

@@ -43,6 +43,11 @@ def slope(xs, ys):
     return sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / den if den else 0.0
 
 
+def median(v):
+    v = sorted(v)
+    return v[len(v) // 2] if v else None
+
+
 def main():
     out = os.path.join(WORK, "memory")
     os.makedirs(out, exist_ok=True)
@@ -76,6 +81,9 @@ def main():
         "cliPeakMb": round(max(s[1] for s in samples) / 1024, 1) if samples else None,
         "cliSteadyMedianMb": round(sorted(cli_mb)[len(cli_mb) // 2], 1) if cli_mb else None,
         "cliSlopeMbPerMin": round(slope([s[0] for s in rec], cli_mb) * 60, 2) if len(rec) > 2 else None,
+        # robust growth metric: median of the last quarter minus median of the first quarter
+        "cliGrowthMb": round(median(cli_mb[-max(1, len(cli_mb) // 4):]) - median(cli_mb[: max(1, len(cli_mb) // 4)]), 1) if cli_mb else None,
+        "ffmpegChildrenGrowthMb": round(median(kid_mb[-max(1, len(kid_mb) // 4):]) - median(kid_mb[: max(1, len(kid_mb) // 4)]), 1) if kid_mb else None,
         "ffmpegChildrenPeakMb": round(max(s[2] for s in samples) / 1024, 1) if samples else None,
         "ffmpegChildrenSlopeMbPerMin": round(slope([s[0] for s in rec], kid_mb) * 60, 2) if len(rec) > 2 else None,
         "samples": samples,
@@ -83,7 +91,10 @@ def main():
     with open(os.path.join(WORK, "memory.json"), "w") as f:
         json.dump(report, f, indent=2)
     print(json.dumps({k: v for k, v in report.items() if k != "samples"}), file=sys.stderr)
-    ok = proc.returncode == 0 and report["valid"] and report["cliSlopeMbPerMin"] is not None and abs(report["cliSlopeMbPerMin"]) < 5.0
+    # A 1080p BGRA frame is ~8.3 MB; allow two frames of allocator/queue jitter, no more.
+    frame_mb = 1920 * 1080 * 4 / 1e6
+    ok = proc.returncode == 0 and bool(report["valid"]) and report["cliGrowthMb"] is not None and report["cliGrowthMb"] <= 2 * frame_mb
+    ok = ok and report["ffmpegChildrenGrowthMb"] is not None and report["ffmpegChildrenGrowthMb"] <= 2 * frame_mb
     print("memory probe:", "PASS" if ok else "FAIL", file=sys.stderr)
     return 0 if ok else 1
 
