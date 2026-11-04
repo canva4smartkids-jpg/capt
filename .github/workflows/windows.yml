@@ -336,6 +336,37 @@ jobs:
             "- NSIS installer: ``$($i.Name)`` ($([math]::Round($i.Length / 1MB, 1)) MB)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
           }
 
+      - name: Verify installer (silent install, launch, uninstall)
+        if: steps.check.outputs.ok == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $inst = @(Get-ChildItem -Path target/release/bundle/nsis, apps/desktop/src-tauri/target/release/bundle/nsis -Filter *.exe -ErrorAction SilentlyContinue)[0]
+          Write-Host "installer: $($inst.FullName)"
+          $p = Start-Process -FilePath $inst.FullName -ArgumentList '/S' -Wait -PassThru
+          Write-Host "install exit code: $($p.ExitCode)"
+          $roots = @("$env:LOCALAPPDATA\Programs", 'C:\Program Files', 'C:\Program Files (x86)') | Where-Object { Test-Path $_ }
+          $exe = Get-ChildItem -Path $roots -Recurse -Filter CaptureOne.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { throw "CaptureOne.exe not found after silent install" }
+          Write-Host "installed: $($exe.FullName) ($($exe.Length) bytes)"
+          $dir = $exe.DirectoryName
+          $proc = Start-Process -FilePath $exe.FullName -PassThru
+          Start-Sleep -Seconds 8
+          $proc.Refresh()
+          if ($proc.HasExited) { throw "CaptureOne.exe crashed on launch (exit code $($proc.ExitCode))" }
+          Write-Host "launch OK: pid $($proc.Id) still running after 8 s"
+          Stop-Process -Id $proc.Id -Force
+          Get-Process -Name CaptureOne -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 2
+          $un = Join-Path $dir 'uninstall.exe'
+          if (-not (Test-Path $un)) { throw "uninstall.exe not found in $dir" }
+          $u = Start-Process -FilePath $un -ArgumentList '/S' -Wait -PassThru
+          Write-Host "uninstall exit code: $($u.ExitCode)"
+          Start-Sleep -Seconds 3
+          if (Test-Path $exe.FullName) { throw "CaptureOne.exe still present after uninstall" }
+          Write-Host "uninstall OK: $($exe.FullName) removed"
+          "- Installer verified: silent install, launch (alive after 8 s), uninstall" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+
       - name: Upload NSIS installer
         if: steps.check.outputs.ok == 'true'
         uses: actions/upload-artifact@v4

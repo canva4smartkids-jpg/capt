@@ -421,6 +421,35 @@ jobs:
           fi
           ls -la bundle-out
 
+      - name: Verify dmg launches (unsigned, binary run directly)
+        if: steps.check.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          dmg=$(ls target/release/bundle/dmg/*.dmg | head -1)
+          echo "dmg: $dmg"
+          mnt=$(mktemp -d)
+          hdiutil attach "$dmg" -mountpoint "$mnt" -nobrowse -readonly
+          apps=$(mktemp -d)/Applications
+          mkdir -p "$apps"
+          cp -R "$mnt"/CaptureOne.app "$apps"/
+          hdiutil detach "$mnt" -force
+          app="$apps/CaptureOne.app"
+          bin=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
+          echo "app: $app, executable: $bin"
+          ls -la "$app/Contents/MacOS"
+          "$app/Contents/MacOS/$bin" > launch.log 2>&1 &
+          pid=$!
+          sleep 8
+          if kill -0 "$pid" 2>/dev/null; then
+            echo "launch OK: pid $pid still running after 8 s"
+            kill "$pid" || true
+          else
+            echo "::error::CaptureOne crashed on launch"; cat launch.log; exit 1
+          fi
+          pkill -f "CaptureOne.app/Contents/MacOS" || true
+          head -20 launch.log || true
+          echo "- dmg verified: mounted, copied, binary alive after 8 s" >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-artifact@v4
         if: steps.check.outputs.present == 'true'
         with:
