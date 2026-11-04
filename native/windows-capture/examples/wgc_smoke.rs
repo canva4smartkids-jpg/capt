@@ -77,7 +77,7 @@ mod win {
         let packed = f.packed_bgra();
         let mut sum = 0u64;
         let mut distinct = std::collections::HashSet::new();
-        for (i, px) in packed.chunks_exact(4).enumerate() {
+        for (i, px) in packed.as_chunks::<4>().0.iter().enumerate() {
             sum += (px[0] as u64 + px[1] as u64 * 2 + px[2] as u64) / 4;
             if i % 97 == 0 && distinct.len() < 4096 {
                 distinct.insert([px[0], px[1], px[2]]);

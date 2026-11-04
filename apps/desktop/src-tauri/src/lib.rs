@@ -5,6 +5,7 @@
 mod actions;
 pub mod capabilities;
 mod commands;
+pub mod hub;
 pub mod events;
 pub mod library;
 mod platform;
@@ -12,15 +13,14 @@ mod recording;
 pub mod region;
 pub mod settings;
 mod shortcuts;
+mod tv;
 pub mod state;
 mod tray;
 pub mod util;
 mod windows;
 
 use media_engine::{EngineConfig, MediaEngine};
-use parking_lot::{Mutex, RwLock};
 use state::{AppCore, AppPaths, Shared};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, WindowEvent};
@@ -111,7 +111,7 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     if let Err(e) = &backend {
         log::error!("capture backend unavailable: {e}");
     }
-    let engine = backend.clone().and_then(|b| MediaEngine::new(b, EngineConfig::default()));
+    let engine = backend.and_then(|b| MediaEngine::new(b, EngineConfig::default()));
     if let Ok(e) = &engine {
         let info = e.ffmpeg_info();
         log::info!("ffmpeg: {:?} ({:?}), ffprobe: {:?}", info.ffmpeg_path, info.ffmpeg_version, info.ffprobe_path);
@@ -121,19 +121,7 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         library::Library::open_in_memory()
     })?;
 
-    let core: Shared = Arc::new(AppCore {
-        paths,
-        app_version: app.package_info().version.to_string(),
-        backend,
-        engine,
-        settings: RwLock::new(settings.clone()),
-        library: Mutex::new(library),
-        active: Mutex::new(None),
-        region: Mutex::new(None),
-        shortcut_actions: Mutex::new(HashMap::new()),
-        last_target: Mutex::new(None),
-        capabilities: Mutex::new(None),
-    });
+    let core: Shared = Arc::new(AppCore::new(paths, app.package_info().version.to_string(), engine, settings.clone(), library));
     app.manage(core.clone());
 
     commands::allow_asset_dir(app, &PathBuf::from(&settings.output_directory));
@@ -158,6 +146,12 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         if let Err(e) = recording::capabilities(&core2) {
             log::warn!("capabilities unavailable: {e}");
         }
+        if core2.settings().companion_hub_enabled {
+            if let Err(e) = hub::start(&core2, Some(app2.clone()), hub::lan_config(&core2)) {
+                log::warn!("companion hub could not be restored: {e}");
+                events::emit_capture(&app2, events::CaptureEvent::Warning { session_id: None, message: format!("The companion hub could not start: {}", e.message) });
+            }
+        }
     });
     Ok(())
 }
@@ -173,6 +167,12 @@ fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
             recording::notify(app, "CaptureOne is still recording", "Stop from the tray icon, the indicator or your shortcut.");
         }
         (windows::REGION, WindowEvent::Destroyed) => region::abandon(core.inner()),
+        (windows::MAIN, WindowEvent::Destroyed) => {
+            // Stop serving companions when the app goes away (joins the hub thread).
+            if let Some(h) = core.hub.lock().take() {
+                h.stop();
+            }
+        }
         _ => {}
     }
 }

@@ -20,6 +20,8 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 capture-core.workspace = true
 media-engine.workspace = true
+companion-hub.workspace = true
+device-discovery.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 log.workspace = true

@@ -593,7 +593,9 @@ name = "captureone-desktop"
 version = "0.1.0"
 dependencies = [
  "capture-core",
+ "companion-hub",
  "crossbeam-channel",
+ "device-discovery",
  "fs4",
  "jsonschema",
  "linux-capture",

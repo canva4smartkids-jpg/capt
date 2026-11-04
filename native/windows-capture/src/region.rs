@@ -80,7 +80,7 @@ mod tests {
 
     fn frame(w: u32, h: u32) -> VideoFrame {
         let mut data = vec![0u8; (w * h * 4) as usize];
-        for (i, px) in data.chunks_exact_mut(4).enumerate() {
+        for (i, px) in data.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             px[0] = (i % 251) as u8;
         }
         VideoFrame::new_bgra(w, h, w * 4, data).unwrap()

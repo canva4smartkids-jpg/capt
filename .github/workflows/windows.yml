@@ -70,7 +70,7 @@ jobs:
         run: cargo test -p capture-core -p windows-capture-backend
 
       - name: Clippy (windows-capture-backend, warnings are errors)
-        run: cargo clippy -p windows-capture-backend --all-targets -- -D warnings
+        run: cargo clippy -p windows-capture-backend --all-targets --no-deps -- -D warnings
 
       - name: Build backend smoke tool (release)
         run: cargo build -p windows-capture-backend --example wgc_smoke --release

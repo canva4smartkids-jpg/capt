@@ -1,8 +1,10 @@
 package dev.captureone.android
 
+import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -162,7 +164,7 @@ private fun AppRoot(vm: AppViewModel, startFromTile: Boolean) {
         permissionLauncher.launch(p)
     }
 
-    fun startRecording() {
+    fun startAfterAudioCheck() {
         // Ask for notifications once (timer + controls), then go to the system consent dialog either way.
         val notif = permissions.firstOrNull { it.kind == PermissionKind.NOTIFICATIONS }
         val p = PermissionInspector.requestablePermission(PermissionKind.NOTIFICATIONS)
@@ -171,6 +173,25 @@ private fun AppRoot(vm: AppViewModel, startFromTile: Boolean) {
             notificationThenRecord.launch(p)
         } else {
             launchConsent(PendingCapture.RECORD)
+        }
+    }
+
+    val audioThenRecord = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        vm.refreshPermissions(activity)
+        if (granted) {
+            startAfterAudioCheck()
+        } else {
+            vm.showMessage("Audio recording needs the microphone permission. Allow it, or turn microphone and internal audio off.", true)
+        }
+    }
+
+    fun startRecording() {
+        val wantsAudio = settings.audio.microphone.enabled || settings.audio.system.enabled
+        if (wantsAudio && context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            vm.markRequested(Manifest.permission.RECORD_AUDIO)
+            audioThenRecord.launch(Manifest.permission.RECORD_AUDIO)
+        } else {
+            startAfterAudioCheck()
         }
     }
 

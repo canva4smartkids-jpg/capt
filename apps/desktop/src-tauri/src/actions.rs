@@ -43,27 +43,13 @@ fn run(app: &AppHandle, core: &Shared, action: ShortcutAction) -> CaptureResult<
                 RecordingState::Recording | RecordingState::Paused => stop(core, &ctl).map(|_| ()),
                 _ => Ok(()),
             },
-            None => {
-                let cfg = recording::default_config(core)?;
-                recording::start(app, core, cfg).map(|_| ())
-            }
+            None => start_default(app, core, false).map(|_| ()),
         },
-        ShortcutAction::PauseResume => {
-            let ctl = core.active().ok_or_else(|| CaptureError::invalid_state("nothing is being recorded"))?;
-            let s = ctl.engine_session().ok_or_else(|| CaptureError::invalid_state("the recording has not started yet"))?;
-            match ctl.phase() {
-                RecordingState::Recording => s.pause(),
-                RecordingState::Paused => s.resume(),
-                p => Err(CaptureError::invalid_state(format!("cannot pause or resume while {p:?}"))),
-            }
-        }
-        ShortcutAction::Screenshot => {
-            let target = match core.last_target.lock().clone() {
-                Some(t) => t,
-                None => CaptureTarget::Display { display_id: recording::primary_display(core)?.id },
-            };
-            take_screenshot(app, core, default_request(core, target), true).map(|_| ())
-        }
+        ShortcutAction::PauseResume => match core.active().map(|c| c.phase()) {
+            Some(RecordingState::Paused) => resume_active(core),
+            _ => pause_active(core),
+        },
+        ShortcutAction::Screenshot => screenshot_default(app, core).map(|_| ()),
         ShortcutAction::RegionScreenshot => {
             let display_id = match core.last_target.lock().clone() {
                 Some(CaptureTarget::Display { display_id }) | Some(CaptureTarget::Region { display_id, .. }) => display_id,
@@ -76,6 +62,47 @@ fn run(app: &AppHandle, core: &Shared, action: ShortcutAction) -> CaptureResult<
             }
         }
     }
+}
+
+/// Starts a recording with the default settings (tray, shortcut, companion). With
+/// `capture_device`, records the first HDMI/USB capture device instead of the screen.
+pub fn start_default(app: &AppHandle, core: &Shared, capture_device: bool) -> CaptureResult<String> {
+    let mut cfg = recording::default_config(core)?;
+    if capture_device {
+        let devices = core.backend()?.list_sources(&[SourceKind::Device]).unwrap_or_default();
+        let device = devices.first().ok_or_else(|| CaptureError::unsupported("No HDMI/USB capture device is connected to this computer."))?;
+        cfg.target = CaptureTarget::Device { device_id: device.id.clone() };
+    }
+    recording::start(app, core, cfg)
+}
+
+fn active_session(core: &Shared) -> CaptureResult<(Arc<SessionCtl>, media_engine::RecordingSession)> {
+    let ctl = core.active().ok_or_else(|| CaptureError::invalid_state("nothing is being recorded"))?;
+    let s = ctl.engine_session().ok_or_else(|| CaptureError::invalid_state("the recording has not started yet"))?;
+    Ok((ctl, s))
+}
+
+pub fn pause_active(core: &Shared) -> CaptureResult<()> {
+    active_session(core)?.1.pause()
+}
+
+pub fn resume_active(core: &Shared) -> CaptureResult<()> {
+    active_session(core)?.1.resume()
+}
+
+/// Stops whatever is being recorded (blocking until the file is finalized).
+pub fn stop_active(core: &Shared) -> CaptureResult<MediaMetadata> {
+    let ctl = core.active().ok_or_else(|| CaptureError::invalid_state("nothing is being recorded"))?;
+    stop(core, &ctl)
+}
+
+/// Screenshot of the last used target (or the primary display) with the default settings.
+pub fn screenshot_default(app: &AppHandle, core: &Shared) -> CaptureResult<MediaMetadata> {
+    let target = match core.last_target.lock().clone() {
+        Some(CaptureTarget::Device { .. }) | None => CaptureTarget::Display { display_id: recording::primary_display(core)?.id },
+        Some(t) => t,
+    };
+    take_screenshot(app, core, default_request(core, target), true)
 }
 
 fn default_request(core: &Shared, target: CaptureTarget) -> ScreenshotRequest {
@@ -114,6 +141,7 @@ pub fn take_screenshot(app: &AppHandle, core: &Shared, mut req: ScreenshotReques
     let stored = core.library.lock().upsert(&media)?;
     *core.last_target.lock() = Some(req.target.clone());
     emit_capture(app, CaptureEvent::Screenshot { media: stored.clone() });
+    core.library_changed();
     Ok(stored)
 }
 
