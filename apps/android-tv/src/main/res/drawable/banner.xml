@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Leanback launcher banner, 320x180 dp (xhdpi 320x180 px equivalent). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#FF1B1B1F" android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M40,52h84a6,6 0,0 1,6 6v52a6,6 0,0 1,-6 6H40a6,6 0,0 1,-6 -6V58a6,6 0,0 1,6 -6zM42,60v48h80V60z" />
+    <path android:fillColor="#FFE5484D" android:pathData="M82,84m-13,0a13,13 0,1 1,26 0a13,13 0,1 1,-26 0" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M70,122h24v5H70z" />
+    <!-- "C1" monogram as simple shapes (vector drawables have no text). -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M196,60a24,24 0,1 0,0 48l0,-10a14,14 0,1 1,0 -28z" />
+    <path android:fillColor="#FFFF8A80" android:pathData="M224,60h12v48h-12z" />
+    <path android:fillColor="#FFFF8A80" android:pathData="M214,66l10,-6v10z" />
+</vector>

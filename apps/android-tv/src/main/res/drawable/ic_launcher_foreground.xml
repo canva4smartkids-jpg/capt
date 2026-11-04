@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground (108dp canvas, 72dp safe zone): screen outline with a record dot. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M32,36h44a4,4 0,0 1,4 4v26a4,4 0,0 1,-4 4H32a4,4 0,0 1,-4 -4V40a4,4 0,0 1,4 -4zM33,41v24h42V41z" />
+    <path
+        android:fillColor="#FFE5484D"
+        android:pathData="M54,53m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M46,73h16v3H46z" />
+</vector>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Companion protocol v1 is plain HTTP on the local network to a hub addressed by IP (no TLS
+     in the protocol yet; requests are authenticated with the pairing token). Domain configs cannot
+     match IP ranges, so cleartext is allowed app-wide; the app only connects to the hub the user
+     typed in. See the proposed contract change for TLS in the workstream report. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
