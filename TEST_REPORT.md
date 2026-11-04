@@ -58,6 +58,11 @@ Committed samples (`artifacts/samples/`, re-probed by the coordinator): H.264 72
 system audio (5.03 s, 150 frames + AAC 48 kHz stereo), H.265 720p (`hvc1`, 120 frames),
 PNG and JPEG 800x600 region screenshots — all decode without errors.
 
+**Linux CI (GitHub `ubuntu-latest`)**: `linux-engine` run 41848195843 (job 126639314263) — all
+steps success: 60 unit tests, release build, Xvfb + PulseAudio integration step (passes only
+if all 25 integration tests + memory probe pass). Earlier run 41846405404 memory probe: CLI
+33.3 MB, 0.0 MB growth over 40 s, 1200 frames, 0 dropped.
+
 Not verified on Linux: hardware encoders (none functional in the container), multiple
 physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical microphone.
 
@@ -111,5 +116,4 @@ physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical micropho
 | Windows/macOS desktop bundles | built by CI jobs (`windows` → NSIS, `macos` → app/dmg; macOS bundle job passed in run 41841621055) |
 
 ## 7. Pending
-Android CI (AGP/Compose APK build, emulator instrumentation), Windows CI runtime results,
-Linux CI workflow.
+Android CI (AGP/Compose APK build, emulator instrumentation).
