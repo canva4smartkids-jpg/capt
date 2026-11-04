@@ -55,5 +55,3 @@ windows = { version = "0.62.2", features = [
   "Win32_UI_Shell_PropertiesSystem",
   "Win32_UI_WindowsAndMessaging",
 ] }
-# MIT OR Apache-2.0 — blocking `.join()` on WinRT async operations (borderless access request).
-windows-future = "0.3.2"
