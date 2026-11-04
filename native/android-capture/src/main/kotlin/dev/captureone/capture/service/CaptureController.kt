@@ -2,7 +2,6 @@ package dev.captureone.capture.service
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import dev.captureone.capture.contract.CaptureError
 import dev.captureone.capture.contract.CaptureEvent
 import dev.captureone.capture.contract.CaptureJson
@@ -104,7 +103,7 @@ object CaptureController : RecorderListener {
     }
 
     private fun startForegroundServiceCompat(context: Context, intent: Intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(intent) else context.startService(intent)
+        context.startForegroundService(intent) // minSdk 26
     }
 
     // ------------------------------------------------------------------ RecorderListener (from the session)

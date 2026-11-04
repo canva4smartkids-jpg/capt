@@ -210,7 +210,7 @@ class CaptureService : Service(), RecorderListener {
     }
 
     private fun stopForegroundCompat() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) stopForeground(STOP_FOREGROUND_REMOVE) else @Suppress("DEPRECATION") stopForeground(true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     // ------------------------------------------------------------------ RecorderListener (via CaptureController)
@@ -268,7 +268,7 @@ class CaptureService : Service(), RecorderListener {
         ?: android.R.drawable.presence_video_online
 
     private fun buildNotification(status: RecordingStatus?, text: String?): Notification {
-        val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(this, CHANNEL_RECORDING) else @Suppress("DEPRECATION") Notification.Builder(this)
+        val b = Notification.Builder(this, CHANNEL_RECORDING)
         b.setSmallIcon(smallIcon())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -306,8 +306,8 @@ class CaptureService : Service(), RecorderListener {
 
     private fun postResultNotification(media: MediaMetadata, reason: StopReason?) {
         val nm = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !nm.areNotificationsEnabled()) return
-        val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(this, CHANNEL_RESULTS) else @Suppress("DEPRECATION") Notification.Builder(this)
+        if (!nm.areNotificationsEnabled()) return
+        val b = Notification.Builder(this, CHANNEL_RESULTS)
         val what = if (media.kind == MediaKind.VIDEO) "Recording saved" else "Screenshot saved"
         val why = when (reason) {
             StopReason.MAX_DURATION -> " (max duration reached)"
@@ -344,7 +344,6 @@ class CaptureService : Service(), RecorderListener {
         private const val RESULT_NOTIFICATION_ID = 4711
 
         fun ensureChannels(context: Context) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val nm = context.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL_RECORDING, "Screen recording", NotificationManager.IMPORTANCE_LOW).apply {

@@ -1,0 +1,170 @@
+name: android
+
+on:
+  push:
+    paths:
+      - "apps/android/**"
+      - "apps/android-tv/**"
+      - "native/android-capture/**"
+      - "packages/capture-contracts/schema/**"
+      - "packages/settings/presets.json"
+      - "tests/contract/fixtures/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "apps/android/**"
+      - "apps/android-tv/**"
+      - "native/android-capture/**"
+      - "packages/capture-contracts/schema/**"
+      - "packages/settings/presets.json"
+      - "tests/contract/fixtures/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: apps/android
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+  BUILD_TOOLS: "35.0.1"
+
+jobs:
+  build:
+    name: Unit tests, lint, debug + release APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android SDK packages (preinstalled SDK + compileSdk 35 / build-tools 35.0.1)
+        working-directory: .
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;${BUILD_TOOLS}" "platform-tools"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: JVM unit tests (contract fixtures, schemas, PTS/mixing, companion client)
+        run: ./gradlew --stacktrace :capture:testDebugUnitTest :app:testDebugUnitTest :tv:testDebugUnitTest
+
+      - name: Host-mode check (engine against android.jar, Compose UI type-check, same tests)
+        run: ./gradlew --stacktrace -Pcaptureone.hostOnly=true test
+
+      - name: Lint
+        run: ./gradlew --stacktrace :capture:lintDebug :app:lintDebug :tv:lintDebug
+
+      - name: Release signing (only when secrets are configured)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            {
+              echo "CAPTUREONE_KEYSTORE=$RUNNER_TEMP/release.jks"
+              echo "CAPTUREONE_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "CAPTUREONE_KEY_ALIAS=$KEY_ALIAS"
+              echo "CAPTUREONE_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Release APKs will be signed."
+          else
+            echo "No signing secrets: release APKs stay unsigned (app-release-unsigned.apk)."
+          fi
+
+      - name: Assemble debug and release APKs
+        run: ./gradlew --stacktrace :app:assembleDebug :app:assembleRelease :tv:assembleDebug :tv:assembleRelease
+
+      - name: Inspect APKs (aapt2 badging, apksigner)
+        run: |
+          BT="$ANDROID_HOME/build-tools/${BUILD_TOOLS}"
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/android"
+          for apk in app/build/outputs/apk/*/*.apk ../android-tv/build/outputs/apk/*/*.apk; do
+            echo "::group::$apk"
+            "$BT/aapt2" dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|uses-permission|uses-feature|leanback|launchable)" || true
+            "$BT/aapt2" dump xmltree --file AndroidManifest.xml "$apk" | grep -E "foregroundServiceType|android:name\(.*\)=\"dev.captureone" || true
+            case "$apk" in
+              *unsigned*) echo "unsigned release (no secrets)";;
+              *) "$BT/apksigner" verify --print-certs "$apk";;
+            esac
+            cp "$apk" "$GITHUB_WORKSPACE/artifacts/android/"
+            echo "::endgroup::"
+          done
+          # The phone app must declare the mediaProjection foreground service; the TV app must require leanback.
+          "$BT/aapt2" dump xmltree --file AndroidManifest.xml app/build/outputs/apk/debug/app-debug.apk | grep -Eq 'foregroundServiceType.*=0x0*20$'
+          "$BT/aapt2" dump badging ../android-tv/build/outputs/apk/debug/tv-debug.apk | grep -q "uses-feature: name='android.software.leanback'"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-apks
+          path: artifacts/android/*.apk
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-reports
+          path: |
+            apps/android/**/build/reports/**
+            apps/android-tv/build/reports/**
+            native/android-capture/build/reports/**
+            native/android-capture/build/test-results/**
+          if-no-files-found: ignore
+
+  emulator-smoke:
+    # Only runnable in CI (needs KVM + an emulator). Exercises the real encoder pipeline with a
+    # synthetic input Surface and synthetic PCM, then validates the MP4 with MediaExtractor.
+    # MediaProjection itself needs a human consent tap and is not automated here.
+    name: Emulator smoke test (encoder pipeline -> valid MP4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Enable KVM
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android SDK packages
+        working-directory: .
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;${BUILD_TOOLS}"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Instrumented tests on API 34 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: apps/android
+          script: ./gradlew --stacktrace :capture:connectedDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-instrumented-reports
+          path: native/android-capture/build/reports/androidTests/**
+          if-no-files-found: ignore

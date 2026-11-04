@@ -1,5 +1,6 @@
 package dev.captureone.capture.library
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.app.RecoverableSecurityException
 import android.content.ContentValues
@@ -255,6 +256,7 @@ class LibraryRepository(context: Context) {
     }
 
     companion object {
+        @SuppressLint("StaticFieldLeak") // holds the application context only
         @Volatile private var instance: LibraryRepository? = null
         fun get(context: Context): LibraryRepository = instance ?: synchronized(this) {
             instance ?: LibraryRepository(context).also { instance = it }
