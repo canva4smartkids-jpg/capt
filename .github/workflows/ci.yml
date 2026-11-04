@@ -41,3 +41,23 @@ jobs:
         run: cargo test -p capture-core
       - name: Clippy (capture-core, warnings are errors)
         run: cargo clippy -p capture-core --all-targets --no-deps -- -D warnings
+
+  audit:
+    name: Dependency vulnerability audit (cargo audit, pnpm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: cargo audit (RustSec advisory DB)
+        run: cargo audit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile=false
+      - name: pnpm audit (production deps)
+        run: pnpm audit --prod
