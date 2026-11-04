@@ -111,7 +111,7 @@ mod server_api {
 
             let (events, _) = broadcast::channel(opts.event_buffer.max(4));
             let (shutdown_tx, shutdown_rx) = watch::channel(false);
-            let state = AppState { backend: backend.clone(), pairing: pairing.clone(), events: events.clone(), shutdown: shutdown_rx.clone() };
+            let state = AppState { backend: backend.clone(), pairing: pairing.clone(), events: events.clone(), shutdown: shutdown_rx.clone(), ws_clients: Default::default() };
             let app = router(state).into_make_service_with_connect_info::<SocketAddr>();
 
             let (ready_tx, ready_rx) = std::sync::mpsc::channel::<CaptureResult<()>>();

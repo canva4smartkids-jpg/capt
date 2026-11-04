@@ -576,6 +576,8 @@ pub enum StopReason {
     SourceClosed,
     Error,
     Interrupted,
+    /// `RecordingSession::cancel`: the recording was discarded.
+    Cancelled,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

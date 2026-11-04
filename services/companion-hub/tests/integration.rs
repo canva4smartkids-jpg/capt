@@ -410,3 +410,48 @@ fn mdns_advertisement_never_blocks_start() {
     assert_eq!(r.status().as_u16(), 200);
     hub.stop();
 }
+
+#[test]
+fn security_ids_ranges_body_and_ws_cap() {
+    let e = env();
+    let (hub, token) = paired(&e);
+    let base = hub.url();
+    // Ids only resolve through the backend: traversal-looking ids are plain misses.
+    for id in ["..%2F..%2Fetc%2Fpasswd", "%2e%2e%2f%2e%2e%2fetc%2fpasswd", "clip.mp4", "%2Fetc%2Fpasswd", "rec%201%00"] {
+        for leaf in ["file", "thumbnail"] {
+            let r = agent().get(format!("{base}/api/v1/recordings/{id}/{leaf}?token={token}")).call().unwrap();
+            assert!(matches!(r.status().as_u16(), 404 | 400), "{id}/{leaf} -> {}", r.status());
+        }
+    }
+    // Raw (unencoded) traversal never reaches a file either.
+    let r = agent().get(format!("{base}/api/v1/recordings/../../../etc/passwd?token={token}")).call().unwrap();
+    assert!(r.status().as_u16() >= 400);
+    // Malformed, overflowing and multi-range requests never panic or leak more than the file.
+    let url = format!("{base}/api/v1/recordings/rec%201/file?token={token}");
+    for range in ["bytes=abc", "bytes=5-1", "bytes=18446744073709551615-18446744073709551616", "bytes=0-99999999999999999999999", "bytes=0-1,5-9", "bytes=-0", "items=0-5", "bytes="] {
+        let mut r = agent().get(&url).header("Range", range).call().unwrap();
+        let st = r.status().as_u16();
+        assert!(matches!(st, 200 | 206 | 400 | 416), "{range} -> {st}");
+        let body = r.body_mut().read_to_vec().unwrap();
+        assert!(body.len() <= 200_000, "{range} returned {} bytes", body.len());
+    }
+    // Oversized request bodies are refused.
+    let big = vec![b'a'; 300 * 1024];
+    let r = agent().post(format!("{base}/api/v1/pair")).header("Content-Type", "application/json").send(&big[..]).unwrap();
+    assert_eq!(r.status().as_u16(), 413);
+    let r = agent().post(format!("{base}/api/v1/command")).header("Authorization", format!("Bearer {token}")).header("Content-Type", "application/json").send(&big[..]).unwrap();
+    assert_eq!(r.status().as_u16(), 413);
+    // The paired-device store keeps only a hash of the token.
+    let stored = std::fs::read_to_string(e.state_dir.join("companion-paired-devices.json")).unwrap();
+    assert!(!stored.contains(&token));
+    // WebSocket connections are capped.
+    let ws_url = base.replace("http://", "ws://");
+    let mut open = Vec::new();
+    for _ in 0..32 {
+        open.push(tungstenite::connect(format!("{ws_url}/api/v1/events?token={token}")).unwrap());
+    }
+    match tungstenite::connect(format!("{ws_url}/api/v1/events?token={token}")) {
+        Err(tungstenite::Error::Http(resp)) => assert_eq!(resp.status().as_u16(), 503),
+        other => panic!("expected 503, got {:?}", other.map(|_| ())),
+    }
+}

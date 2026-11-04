@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 
 /// Maximum number of remembered companions. Pairing more fails until one is removed.
 pub const MAX_PAIRED_DEVICES: usize = 64;
+/// Upper bound on per-address failure records (an IPv6 /64 has unlimited addresses).
+const MAX_TRACKED_CLIENTS: usize = 4096;
 const STORE_FILE: &str = "companion-paired-devices.json";
 
 /// Pairing brute-force protection.
@@ -180,6 +182,13 @@ impl Pairing {
         let now = Instant::now();
         let mut g = self.inner.lock();
         let policy = self.policy.clone();
+        if g.failures.len() >= MAX_TRACKED_CLIENTS {
+            // Bound memory: drop clients that are neither locked out nor mid-streak.
+            g.failures.retain(|_, f| f.locked_until.is_some_and(|u| u > now));
+            if g.failures.len() >= MAX_TRACKED_CLIENTS {
+                return Err(PairError::LockedOut { retry_after: policy.lockout });
+            }
+        }
         {
             let f = g.failures.entry(client).or_default();
             if let Some(until) = f.locked_until {

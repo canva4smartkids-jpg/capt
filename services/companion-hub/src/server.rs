@@ -14,6 +14,7 @@ use axum::{Json, Router};
 use futures_util::{SinkExt, StreamExt};
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, watch};
@@ -27,6 +28,18 @@ pub(crate) struct AppState {
     pub pairing: Arc<Pairing>,
     pub events: broadcast::Sender<HubEvent>,
     pub shutdown: watch::Receiver<bool>,
+    pub ws_clients: Arc<AtomicUsize>,
+}
+
+/// Upper bound on simultaneous `/events` WebSockets (a LAN hub has a handful of companions).
+pub(crate) const MAX_EVENT_SOCKETS: usize = 32;
+
+/// Releases a WebSocket slot when the connection ends.
+struct WsSlot(Arc<AtomicUsize>);
+impl Drop for WsSlot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 fn json_error(status: StatusCode, message: impl Into<String>) -> Response {
@@ -231,7 +244,15 @@ async fn command(State(state): State<AppState>, body: axum::body::Bytes) -> Resp
 }
 
 async fn events(State(state): State<AppState>, ws: WebSocketUpgrade) -> Response {
-    ws.max_message_size(64 * 1024).on_upgrade(move |socket| event_socket(socket, state))
+    if state.ws_clients.fetch_add(1, Ordering::SeqCst) >= MAX_EVENT_SOCKETS {
+        state.ws_clients.fetch_sub(1, Ordering::SeqCst);
+        return json_error(StatusCode::SERVICE_UNAVAILABLE, "too many event connections");
+    }
+    let slot = WsSlot(state.ws_clients.clone());
+    ws.max_message_size(64 * 1024).on_upgrade(move |socket| async move {
+        let _slot = slot;
+        event_socket(socket, state).await
+    })
 }
 
 async fn send_event(socket: &mut futures_util::stream::SplitSink<WebSocket, Message>, ev: &HubEvent) -> bool {

@@ -172,7 +172,7 @@ impl RecordingSession {
             return Err(CaptureError::invalid_state("recording already finished"));
         }
         self.shared.cancel.store(true, Ordering::SeqCst);
-        self.shared.request_stop(StopReason::User, None);
+        self.shared.request_stop(StopReason::Cancelled, None);
         match self.shared.wait_done() {
             Err(e) if e.code == CaptureErrorCode::Interrupted => Ok(()),
             Err(e) => Err(e),
