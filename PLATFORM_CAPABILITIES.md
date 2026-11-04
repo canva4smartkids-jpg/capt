@@ -55,8 +55,19 @@ Whether each item has actually been *verified* on real hardware is tracked separ
    not guaranteed to exist on TV builds. CaptureOne checks at runtime whether
    `MediaProjectionManager.createScreenCaptureIntent()` resolves to an activity and
    reports `native` / `unsupported` per device accordingly; when unavailable the TV app
-   runs in companion mode. FLAG_SECURE and DRM video surfaces are always black. Not
-   verified on physical TV hardware during this sprint.
+   runs in companion mode. FLAG_SECURE and DRM video surfaces are always black.
+   **Emulator evidence (not physical TV hardware; CI run 41882304438, job `TV emulator`,
+   test `TvCaptureInvestigationTest`):** on the AOSP Android TV system image (API 34, product
+   `sdk_google_atv_x86`, `FEATURE_LEANBACK` and `FEATURE_TELEVISION` true) and on the Google TV
+   image (API 34, `sdk_google_atv_amati_x86`) `createScreenCaptureIntent()` resolves to
+   `com.android.systemui/.media.MediaProjectionPermissionActivity`, consent was returned
+   without UI via `appops PROJECT_MEDIA allow`, and a real MediaProjection recording
+   succeeded (H.264 MP4, 1280x720, MediaExtractor valid; Android TV image: 2.9 s, ffprobe
+   duration 2.896 s; Google TV image: 1.6 s, ffprobe 1.581 s, because frames arrive only when
+   the screen changes). A 1920x1080 PNG screenshot also validated on the Android TV image; on
+   the Google TV image the screenshot step reported "no frame delivered within 4 s" (static
+   screen). Real TVs/set-top boxes from OEMs may still omit the consent activity; physical
+   hardware remains unverified.
 2. **Linux window capture** grabs the window's on-screen rectangle (occluded areas appear
    as seen on screen). Wayland-only sessions are unsupported (XWayland apps only); the
    xdg-desktop-portal ScreenCast path is future work.
