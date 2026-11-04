@@ -172,17 +172,25 @@ class CompanionClientTest {
                 webSocket.send("""{"type":"recording-status","status":null}""")
                 webSocket.send("""{"type":"library-changed"}""")
             }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(1000, null)
+            }
         }))
         val got = CopyOnWriteArrayList<HubEvent>()
         val latch = CountDownLatch(4)
+        val closed = CountDownLatch(1)
         val ws = client().events(object : HubEventListener {
             override fun onEvent(event: HubEvent) {
                 got += event
                 latch.countDown()
             }
+
+            override fun onClosed(code: Int, reason: String) = closed.countDown()
         })
         assertTrue(latch.await(5, TimeUnit.SECONDS))
         ws.close(1000, null)
+        assertTrue("socket closed cleanly", closed.await(5, TimeUnit.SECONDS))
         assertTrue(got[0] is HubEvent.Hello)
         assertEquals(RecordingState.PAUSED, (got[1] as HubEvent.RecordingStatusChanged).status?.state)
         assertNull((got[2] as HubEvent.RecordingStatusChanged).status)

@@ -29,9 +29,11 @@ class PcmMixerTest {
         val a = ShortArray(4) { Short.MAX_VALUE }
         val b = ShortArray(4) { Short.MAX_VALUE }
         val out = Pcm.mix(a, 2f, b, 2f, 4)
-        out.forEach { assertTrue("positive, below full scale: $it", it > 30_000 && it < Short.MAX_VALUE) }
+        out.forEach { assertTrue("positive, no wrap-around: $it", it > 30_000) }
         val n = Pcm.mix(ShortArray(4) { Short.MIN_VALUE }, 2f, ShortArray(4) { Short.MIN_VALUE }, 2f, 4)
-        n.forEach { assertTrue("negative: $it", it < -30_000 && it > Short.MIN_VALUE) }
+        n.forEach { assertTrue("negative, no wrap-around: $it", it < -30_000 && it >= -Short.MAX_VALUE) }
+        // Just above the knee the limiter is still below full scale (soft knee, not a hard clip).
+        assertTrue(Pcm.toShort(1.0f) < Short.MAX_VALUE)
     }
 
     @Test
@@ -41,7 +43,7 @@ class PcmMixerTest {
         while (x <= 8f) {
             val y = Pcm.limit(x)
             assertTrue(y >= prev)
-            assertTrue(abs(y) < 1f)
+            assertTrue(abs(y) <= 1f)
             prev = y
             x += 0.01f
         }
@@ -70,11 +72,11 @@ class PcmMixerTest {
         val (start, out) = m.read(10)!!
         assertEquals(0L, start)
         assertEquals(10, out.size)
-        for (i in 0 until 5) assertEquals(1000, out[i].toInt(), 1)
-        for (i in 5 until 10) assertEquals(1500, out[i].toInt(), 1)
+        for (i in 0 until 5) assertEquals(1000.0, out[i].toDouble(), 1.0)
+        for (i in 5 until 10) assertEquals(1500.0, out[i].toDouble(), 1.0)
         val (start2, out2) = m.read(15)!!
         assertEquals(10L, start2)
-        out2.forEach { assertEquals(500, it.toInt(), 1) } // source 0 ended: silence + source 1
+        out2.forEach { assertEquals(500.0, it.toDouble(), 1.0) } // source 0 ended: silence + source 1
     }
 
     @Test

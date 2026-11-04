@@ -22,7 +22,9 @@ class NamingAndFormatTest {
         assertEquals("_CON", FileNaming.sanitize("CON"))
         assertEquals("CaptureOne", FileNaming.sanitize("  ...  "))
         assertEquals(120, FileNaming.sanitize("x".repeat(300)).length)
-        assertEquals("a b", FileNaming.sanitize("a \t\n b"))
+        // Control characters become "_" before whitespace is collapsed (same order as the TS implementation).
+        assertEquals("a __ b", FileNaming.sanitize("a \t\n b"))
+        assertEquals("a b", FileNaming.sanitize("a  \u00a0 b"))
         assertEquals("tab_x", FileNaming.sanitize("tab\u0001x"))
     }
 
