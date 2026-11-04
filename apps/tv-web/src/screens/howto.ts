@@ -12,6 +12,7 @@ function first(el: HTMLElement): HTMLElement {
 
 export function createHowto(app: App): Screen {
   const isLg = app.adapter.id === "webos";
+  const isTizen = app.adapter.id === "tizen";
   return {
     id: "howto",
     render(root) {
@@ -21,9 +22,13 @@ export function createHowto(app: App): Screen {
           h(
             "p",
             null,
-            isLg
-              ? "LG's developer forum states that webOS TV provides no screen-capture API to apps, and there is no API to capture the sound either. CaptureOne for TV therefore never claims to record the TV. It remote-controls CaptureOne on your computer and plays back what the computer recorded."
-              : "Samsung's Smart TV FAQ states that screen capture is not supported in Samsung TV apps, and there is no API to capture the sound either. CaptureOne for TV therefore never claims to record the TV. It remote-controls CaptureOne on your computer and plays back what the computer recorded.",
+            `${
+              isLg
+                ? "LG's developer forum states that webOS TV provides no screen-capture API to apps."
+                : isTizen
+                  ? "Samsung's Smart TV FAQ states that screen capture is not supported in Samsung TV apps."
+                  : "Samsung's Smart TV FAQ states that screen capture is not supported in Samsung TV apps, and LG's developer forum states that webOS TV provides no screen-capture API to apps."
+            } There is no API to capture the sound either. CaptureOne for TV therefore never claims to record the TV. It remote-controls CaptureOne on your computer and plays back what the computer recorded.`,
           ),
         )),
       );

@@ -98,22 +98,19 @@ fn scan(dir: &Path, thumbs: &Path) -> Vec<Entry> {
             .collect();
         let id = format!("demo-{i}");
         let thumb = thumbs.join(format!("{id}.jpg"));
-        let made = Command::new("ffmpeg")
-            .args(["-v", "error", "-y", "-ss", "0.5", "-i"])
-            .arg(&file)
-            .args(["-frames:v", "1", "-vf", "scale=480:-2"])
-            .arg(&thumb)
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-            || Command::new("ffmpeg")
-                .args(["-v", "error", "-y", "-i"])
-                .arg(&file)
-                .args(["-frames:v", "1", "-vf", "scale=480:-2"])
-                .arg(&thumb)
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false);
+        // Seek half a second into videos; stills have a single frame. ffmpeg can exit 0 without
+        // writing a frame, so check the output file as well.
+        let thumb_ok = |seek: Option<&str>| {
+            let _ = std::fs::remove_file(&thumb);
+            let mut cmd = Command::new("ffmpeg");
+            cmd.args(["-v", "error", "-y"]);
+            if let Some(ss) = seek {
+                cmd.args(["-ss", ss]);
+            }
+            let ok = cmd.arg("-i").arg(&file).args(["-frames:v", "1", "-vf", "scale=480:-2"]).arg(&thumb).status().map(|s| s.success()).unwrap_or(false);
+            ok && std::fs::metadata(&thumb).map(|m| m.len() > 0).unwrap_or(false)
+        };
+        let made = if kind == MediaKind::Video { thumb_ok(Some("0.5")) || thumb_ok(None) } else { thumb_ok(None) };
         let size = std::fs::metadata(&file).map(|m| m.len()).unwrap_or(0);
         let file_name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let meta = MediaMetadata {
