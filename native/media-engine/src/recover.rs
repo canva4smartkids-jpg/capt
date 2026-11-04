@@ -210,7 +210,7 @@ mod tests {
     fn bx(typ: &[u8; 4], payload: usize) -> Vec<u8> {
         let mut v = ((payload + 8) as u32).to_be_bytes().to_vec();
         v.extend_from_slice(typ);
-        v.extend(std::iter::repeat(0u8).take(payload));
+        v.extend(std::iter::repeat_n(0u8, payload));
         v
     }
 
@@ -257,7 +257,7 @@ mod tests {
         let mut large = 1u32.to_be_bytes().to_vec();
         large.extend_from_slice(b"mdat");
         large.extend_from_slice(&(16u64 + 32).to_be_bytes());
-        large.extend(std::iter::repeat(1u8).take(32));
+        large.extend(std::iter::repeat_n(1u8, 32));
         d.extend(large);
         assert_eq!(len_of(&d), d.len() as u64);
         assert_eq!(len_of(&[0u8; 3]), 0);

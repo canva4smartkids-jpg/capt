@@ -20,6 +20,7 @@ pub struct MuxOutcome {
 }
 
 /// Runs the mux into a temp file in `output_dir`, then moves it to the first free name.
+#[allow(clippy::too_many_arguments)] // internal mux entry point; args are distinct inputs
 pub fn mux_to_final(
     ffmpeg: &Path,
     ffprobe: &Path,
@@ -56,7 +57,7 @@ pub fn make_thumbnail(ffmpeg: &Path, video: &Path, output_dir: &Path, duration_s
     std::fs::create_dir_all(&dir).ok()?;
     let stem = video.file_stem()?.to_string_lossy().to_string();
     let out = dir.join(format!("{stem}.jpg"));
-    let seek = (duration_sec / 2.0).min(1.0).max(0.0);
+    let seek = (duration_sec / 2.0).clamp(0.0, 1.0);
     for s in [seek, 0.0] {
         let mut cmd = new_command(ffmpeg);
         cmd.args(thumbnail_args(video, s, 480, &out));

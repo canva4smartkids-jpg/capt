@@ -374,10 +374,12 @@ pub async fn media_stream_url(state: State<'_, Shared>, id: String) -> Cmd<Optio
 }
 
 /// Commands beyond the contract (proposed upstream; see the desktop report).
-pub const EXTRA_COMMANDS: &[&str] = &["media_stream_url"];
+/// Commands registered beyond the contract (none: `media_stream_url` is now in the contract).
+pub const EXTRA_COMMANDS: &[&str] = &[];
 
 /// Command names, in contract order (used by build.rs ACL generation and tests).
 pub const COMMANDS: &[&str] = &[
+    "media_stream_url",
     "get_capabilities",
     "get_permission_status",
     "request_permission",
