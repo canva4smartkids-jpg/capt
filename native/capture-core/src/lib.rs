@@ -47,7 +47,7 @@ mod tests {
     #[test]
     fn crop_and_rgba() {
         let mut data = vec![0u8; 4 * 4 * 4];
-        for (i, px) in data.chunks_exact_mut(4).enumerate() {
+        for (i, px) in data.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             px.copy_from_slice(&[i as u8, 10, 20, 0]);
         }
         let f = VideoFrame::new_bgra(4, 4, 16, data).unwrap();
