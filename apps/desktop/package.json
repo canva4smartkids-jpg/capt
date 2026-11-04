@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "fetch-ffmpeg": "node scripts/fetch-ffmpeg.mjs",
+    "tauri:build:release": "tauri build --config src-tauri/tauri.release.conf.json"
   },
   "dependencies": {
     "@captureone/capture-contracts": "workspace:*",
