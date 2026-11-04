@@ -1,0 +1,41 @@
+name: ci-contracts
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Shared contracts (TS + Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile=false
+      - name: Typecheck and test shared packages
+        run: |
+          pnpm --filter @captureone/capture-contracts typecheck
+          pnpm --filter @captureone/capture-contracts test
+          pnpm --filter @captureone/settings typecheck
+          pnpm --filter @captureone/settings test
+      - name: Schemas and fixtures are up to date
+        run: |
+          pnpm --filter @captureone/capture-contracts schema
+          pnpm --filter @captureone/settings fixtures
+          git diff --exit-code -- packages/capture-contracts/schema tests/contract/fixtures
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Rust contract tests (capture-core)
+        run: cargo test -p capture-core
