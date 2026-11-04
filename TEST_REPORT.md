@@ -127,3 +127,27 @@ physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical micropho
 | Bug found by the emulator and fixed | `ef939f3` | `Regex("(?U)\\s+")` rejected by Android ICU → class init failure would have crashed every save on devices; JVM tests could not catch it; fixed + regression test + `LinkageError` containment |
 | Microphone / internal audio | — | **unverified** (emulator runs `-noaudio`) |
 | Physical phones/tablets, Android TV / Google TV hardware | — | **unverified** (no hardware) |
+
+## 8. Capture-card (HDMI/UVC) recording — desktop
+
+Implemented once in `media-engine` via ffmpeg device demuxers (Linux v4l2, Windows dshow,
+macOS avfoundation), feeding the existing pacer/encoder/mux/validation pipeline.
+
+| Check | Result |
+|---|---|
+| Parser/enumeration/arg-builder unit tests (dshow + avfoundation list output fixtures, sysfs in temp dir) | pass (part of media-engine 63/63) |
+| Device pipeline through the CLI with the env-gated test seam (`CAPTUREONE_TEST_DEVICE_INPUT`, lavfi source standing in for the card) | 5 new integration tests pass (listing + capability, 4 s record → ffprobe h264 1280x720 30 fps 120 packets 4.0 s valid, pause/resume, PNG screenshot 1280x720, missing device error); full suite 30/30 |
+| Desktop UI "Capture devices" tab + hub `capture-device` preset | vitest 66/66, `cargo test -p captureone-desktop` 32/32 |
+| Real capture hardware (v4l2/dshow/avfoundation) | **unverified** — no capture device available; Windows/macOS listings verified only against fixture text |
+
+## 9. Security review and license audit
+
+`docs/release/SECURITY_REVIEW.md`: 5 Medium + 3 Low findings fixed with regression tests
+(hub WebSocket/connection caps, pairing-failure table bound, output-directory validation,
+export destination validation, untrusted recovery manifest, loopback media server limits,
+request-line validation in discovery, Android hub address restricted to LAN). Residual:
+companion protocol is plain HTTP on the LAN; pairing code not rotated after pairing.
+`docs/release/LICENSES-AUDIT.md` + `THIRD_PARTY_NOTICES.md`: 660 entries; no GPL/AGPL;
+5 MPL-2.0 crates (Tauri tooling, unmodified); EPL-1.0 JUnit test-only. `cargo audit` /
+`pnpm audit` run in CI (`ci-contracts` → `audit` job).
+

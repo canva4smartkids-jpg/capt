@@ -29,6 +29,9 @@ CI artifacts are attached to the corresponding workflow runs.
   limits, post-write ffprobe/MediaExtractor validation of every file.
 - Desktop app: record/library/settings/devices UI, countdown, recording indicator, region
   selector, tray, global shortcuts, SQLite history.
+- Capture-card (HDMI/UVC) recording on desktop via ffmpeg v4l2/dshow/avfoundation — record a
+  TV or console through a capture card (verified through a test seam; real hardware untested).
+- Security hardening from the pre-release review (see `docs/release/SECURITY_REVIEW.md`).
 - TV: honest companion apps for Tizen/webOS (browse/play desktop recordings, remote
   recording control, capability report), LAN discovery and TV remote control from desktop.
 
@@ -40,6 +43,7 @@ CI artifacts are attached to the corresponding workflow runs.
   device shipping the MediaProjection consent activity.
 - Tizen/webOS: no system capture API exists for apps; TV screen recording requires an HDMI
   capture card on the desktop. LG one-shot screenshot is experimental and undocumented.
+- Project license not yet chosen (`UNLICENSED`); bundled ffmpeg must be an LGPL build.
 - Companion protocol v1 is plain HTTP on the LAN (token-authenticated, pairing-code gated);
   TLS is planned.
 
