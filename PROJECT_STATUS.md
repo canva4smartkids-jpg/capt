@@ -2,6 +2,12 @@
 
 Sprint start: 2026-11-04 12:52 UTC. Reports are appended newest-first.
 
+**Final state (2026-11-04 ~14:50 UTC):** all workstreams finished and pushed. Real capture +
+MP4 recording verified on Linux (container + CI), macOS 14 and Windows (GitHub-hosted
+runners) and Android (API 34 emulator in CI). All CI workflows green (`ci-contracts`,
+`linux-engine`, `windows`, `macos`, `android`, `tv`). Sprint ended early at the user's request
+to conserve credits.
+
 ---
 
 ## Final acceptance (per platform)
@@ -14,8 +20,8 @@ but not executed on that platform; CI = GitHub-hosted runner.
 | Linux (X11) | complete | passed (deb/rpm/AppImage) | unverified (bundles built, not installed on a clean host) | **verified** (PNG/JPEG, region) | **verified** (H.264/H.265, 24/30/60, pause, limits, recovery) | **verified** (Pulse monitor + cpal mic, mixed/separate) | passed (25 integration + 60 unit) | X11 only; HW encoders untested |
 | macOS | complete | passed (CI macos-14 native build + Tauri app/dmg bundle) | unverified | **verified on CI runner** (SCK 1920x1080, region, legacy path) | **verified on CI runner** (CLI H.264 5.03 s 151 frames; region 640x360) | **verified on CI runner** (SCK system audio AAC 48 kHz); mic unverified | passed (40 unit + 6 live) | window capture/close pending; macOS 15, Intel runtime, VideoToolbox, signing/notarization |
 | Windows | complete | passed (CI MSVC build; NSIS installer built in CI) | unverified (installer not run) | **verified on CI runner** (WGC display 1024x768, region 200x120, window) | **verified on CI runner** (WGC → CLI H.264 1024x768 5 s 150 frames, validated; SourceClosed on window close) | unverified (runner has no audio device; backend reports it honestly); mic unverified | passed (27 unit + 18-step smoke) | WASAPI loopback, multi-monitor/HDR/high-DPI, HW encoders, signing |
-| Android phone/tablet | complete | engine compiled + 88 JVM tests here; AGP/Compose APK build only on CI | unverified | unverified (no device) | unverified (no device) | unverified | passed (88 JVM) | needs physical device; Play signing |
-| Android TV / Google TV | complete | as above | unverified | unverified | unverified | unverified | passed (JVM, in the 88) | device-dependent consent activity |
+| Android phone/tablet | complete | passed (CI: debug + release-unsigned APKs, lint) | verified on emulator (instrumented install, API 34) | **verified on emulator** (MediaProjection PNG 320x640) | **verified on emulator** (MediaProjection → MediaCodec H.264, pause excluded, 3.157 s, MediaStore) | unverified (emulator has no audio); synthetic AAC path verified | passed (89 JVM + 5 instrumented) | physical devices; mic/internal audio; Play signing |
+| Android TV / Google TV | complete | passed (CI: tv APKs, leanback manifest verified) | unverified (no TV emulator/hardware) | unverified | unverified (same engine as phone; device-dependent consent activity) | unverified | passed (JVM) | real TV hardware; consent activity availability |
 | Samsung Tizen | complete (companion) | passed (.wgt signed with test certs, unsigned variant) | unverified (no TV) | unsupported (platform) | unsupported (platform; HDMI capture via desktop) | unsupported | passed (44 web + 28 E2E in Chromium) | Samsung certificate needed for retail TVs |
 | LG webOS | complete (companion) | passed (.ipk) | unverified (no TV) | experimental desktop-side SSAP screenshot, unverified | unsupported (platform; HDMI capture via desktop) | unsupported | passed (shared with Tizen) | Dev Mode / LG account; SSAP pairing on real firmware |
 | Companion hub + discovery | complete | passed | n/a | n/a | n/a | n/a | passed (58) | no real TVs; HTTP (no TLS) |

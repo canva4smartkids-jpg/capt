@@ -115,5 +115,15 @@ physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical micropho
 | Not covered by E2E | Devices page, region overlay/region recording (selector fixed after the run, not re-run); covered only by vitest + Rust tests |
 | Windows/macOS desktop bundles | built by CI jobs (`windows` → NSIS, `macos` → app/dmg; macOS bundle job passed in run 41841621055) |
 
-## 7. Pending
-Android CI (AGP/Compose APK build, emulator instrumentation).
+## 7. Android phone/tablet + Android TV
+
+| Check | Where | Result |
+|---|---|---|
+| JVM unit tests (`:capture` 72, `:app` 8, `:tv` 9) incl. contract tests vs shared JSON Schemas/fixtures | container + CI | 89/89 pass |
+| Lint (`abortOnError = true`) for `:capture`, `:app`, `:tv` | CI | pass |
+| AGP/Compose APK build | GitHub Actions `android` run 41849443116 (coordinator confirmed `success`) | `app-debug.apk`, `app-release-unsigned.apk`, `tv-debug.apk`, `tv-release-unsigned.apk` (artifact `android-apks`); debug APKs pass `apksigner verify` |
+| `aapt2 dump badging` | CI | ids `dev.captureone.android` / `dev.captureone.tv`, targetSdk 35; FGS + FGS_MEDIA_PROJECTION + FGS_MICROPHONE, POST_NOTIFICATIONS, RECORD_AUDIO; `CaptureService foregroundServiceType=0xa0` (mediaProjection\|microphone); TV: leanback required + leanback launcher banner |
+| **Emulator instrumentation (API 34 google_apis x86_64, KVM)** | same run | **5/5 pass**: synthetic Surface → `c2.android.avc.encoder` + AAC + muxer with pause → h264 640x360 + aac 48 kHz stereo, 4.05 s; **real MediaProjection recording** through `CaptureService` (consent pre-authorised via `appops PROJECT_MEDIA`) with a 1.5 s pause → h264 320x640, 46 frames, 3.157 s (paused time excluded), published to MediaStore; **MediaProjection screenshot** PNG 320x640 published to `Pictures/CaptureOne`; presets asset packaged; capability report round-trips |
+| Bug found by the emulator and fixed | `ef939f3` | `Regex("(?U)\\s+")` rejected by Android ICU → class init failure would have crashed every save on devices; JVM tests could not catch it; fixed + regression test + `LinkageError` containment |
+| Microphone / internal audio | — | **unverified** (emulator runs `-noaudio`) |
+| Physical phones/tablets, Android TV / Google TV hardware | — | **unverified** (no hardware) |

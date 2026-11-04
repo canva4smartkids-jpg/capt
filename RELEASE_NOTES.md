@@ -10,8 +10,8 @@ performed; all binaries are unsigned or signed with test keys (see `BLOCKERS.md`
 | Linux | `CaptureOne_0.1.0_amd64.deb`, `CaptureOne-0.1.0-1.x86_64.rpm`, `CaptureOne_0.1.0_amd64.AppImage` | local build (`artifacts/linux/`) | unsigned |
 | Windows | NSIS installer `CaptureOne_0.1.0_x64-setup.exe` | GitHub Actions `windows` workflow (job `desktop`) | unsigned |
 | macOS | `CaptureOne.app` / `.dmg` | GitHub Actions `macos` workflow (job `desktop-bundle`) | unsigned, not notarized |
-| Android phone/tablet | `app-*.apk` | GitHub Actions `android` workflow | test key / debug |
-| Android TV | `tv-*.apk` | GitHub Actions `android` workflow | test key / debug |
+| Android phone/tablet | `app-debug.apk`, `app-release-unsigned.apk` | GitHub Actions `android` workflow (artifact `android-apks`) | debug cert / unsigned release |
+| Android TV | `tv-debug.apk`, `tv-release-unsigned.apk` | GitHub Actions `android` workflow (artifact `android-apks`) | debug cert / unsigned release |
 | Samsung Tizen | `CaptureOne-0.1.0.wgt` (+ unsigned variant) | local + GitHub Actions `tv` | throwaway author cert + Tizen default distributor cert (not installable on retail TVs) |
 | LG webOS | `dev.captureone.tv_0.1.0_all.ipk` | local + GitHub Actions `tv` | n/a (Developer Mode side-load) |
 | Headless recorder | `captureone-cli` (Linux/Windows/macOS) | local + CI | unsigned |
