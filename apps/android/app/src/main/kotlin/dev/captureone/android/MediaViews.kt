@@ -27,7 +27,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import dev.captureone.capture.contract.MediaKind
@@ -60,6 +62,7 @@ fun MediaPreview(item: LibraryItem?, modifier: Modifier) {
     if (item.media.kind == MediaKind.VIDEO) VideoPlayer(item.uri, modifier) else ImageViewer(item.uri, modifier)
 }
 
+@OptIn(UnstableApi::class) // media3 marks parts of the player/view API unstable; no unstable API is relied on knowingly
 @Composable
 fun VideoPlayer(uri: Uri, modifier: Modifier) {
     val context = LocalContext.current

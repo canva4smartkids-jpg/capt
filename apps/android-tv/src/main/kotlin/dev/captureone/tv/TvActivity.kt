@@ -26,7 +26,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -241,6 +243,7 @@ private fun TvApp(vm: TvViewModel) {
 }
 
 /** media3 player; [headers] carries the hub's bearer token for streamed recordings. */
+@OptIn(UnstableApi::class) // DefaultHttpDataSource / DefaultMediaSourceFactory configuration
 @Composable
 private fun TvVideoPlayer(url: String, headers: Map<String, String>, modifier: Modifier) {
     val context = LocalContext.current
