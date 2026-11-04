@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { readFileSync } from "node:fs";
 import { defineConfig, type Plugin } from "vite";
 
@@ -31,6 +32,7 @@ export default defineConfig({
     target: "es2015",
     cssTarget: "chrome53",
     modulePreload: false,
+    cssCodeSplit: false,
     assetsInlineLimit: 0,
     sourcemap: false,
     rolldownOptions: {

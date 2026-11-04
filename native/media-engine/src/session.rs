@@ -601,11 +601,17 @@ fn check_limits(shared: &Shared, plan: &Plan) -> Option<StopReason> {
         }
     }
     if let Some(free) = live.free_disk {
-        if free < lim.min_free_disk_mb * MIB {
+        if free < low_disk_threshold(lim.min_free_disk_mb, live.bytes_written) {
             return Some(StopReason::LowDisk);
         }
     }
     None
+}
+
+/// Finalizing copies the intermediates into the final MP4, so the recording stops while
+/// there is still room for that copy *and* the configured minimum afterwards.
+fn low_disk_threshold(min_free_mb: u64, bytes_written: u64) -> u64 {
+    min_free_mb * MIB + bytes_written + bytes_written / 20 + 8 * MIB
 }
 
 fn supervise(shared: Arc<Shared>, mut rt: Runtime, mut plan: Plan, rx: Receiver<Cmd>) {
@@ -626,7 +632,7 @@ fn supervise(shared: Arc<Shared>, mut rt: Runtime, mut plan: Plan, rx: Receiver<
         if let Some(reason) = check_limits(&shared, &plan) {
             shared.stop_sent.store(true, Ordering::SeqCst);
             if reason == StopReason::LowDisk {
-                shared.warn("free disk space fell below the configured minimum; stopping");
+                shared.warn("free disk space is running out (minimum free space plus room to finalize); stopping");
             }
             break (reason, None);
         }
@@ -888,6 +894,12 @@ mod tests {
             config: cfg,
             lock: None,
         }
+    }
+
+    #[test]
+    fn low_disk_reserves_room_for_finalizing() {
+        assert_eq!(low_disk_threshold(500, 0), 508 * MIB);
+        assert_eq!(low_disk_threshold(0, 100 * MIB), 100 * MIB + 5 * MIB + 8 * MIB);
     }
 
     #[test]

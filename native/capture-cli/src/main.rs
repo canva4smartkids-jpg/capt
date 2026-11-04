@@ -33,7 +33,7 @@ Commands:
          [--mic] [--mic-device <id>] [--mic-gain <0..2>] [--system-audio] [--system-gain <0..2>]
          [--tracks mixed|separate] [--sample-rate 44100|48000] [--audio-kbps 160]
          [--pause-at <sec> --resume-at <sec>] [--max-duration <sec>] [--max-size-mb <mb>]
-         [--min-free-mb <mb>] [--template <name>] --out <dir>
+         [--min-free-mb <mb>] [--template <name>] [--cancel-at <sec>] --out <dir>
   inspect <file>                    ffprobe metadata + validation of a file
   recover --out <dir>               Finalize interrupted sessions into playable MP4s
 
@@ -392,8 +392,17 @@ fn cmd_record(a: &Args) -> CaptureResult<ExitCode> {
         _ => 0.0,
     };
     let stop_at = duration.map(|d| if pause_at.map(|p| p < d + 1e-9).unwrap_or(false) { d + pause_len } else { d });
+    let cancel_at: Option<f64> = a.get("cancel-at").map(|v| v.parse().map_err(|_| usage("bad --cancel-at"))).transpose()?;
     let (mut paused, mut resumed) = (false, false);
     loop {
+        if let Some(c) = cancel_at {
+            if t0.elapsed().as_secs_f64() >= c {
+                session.cancel()?;
+                emit(json!({"event": "final", "cancelled": true, "wallMs": t0.elapsed().as_millis() as u64}));
+                print_json(&json!({"cancelled": true, "sessionId": session.id()}));
+                return Ok(ExitCode::SUCCESS);
+            }
+        }
         if listener.done.lock().is_some() || interrupted.load(Ordering::SeqCst) {
             break;
         }
