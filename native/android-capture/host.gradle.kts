@@ -4,6 +4,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
+    `java-library`
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -32,8 +33,8 @@ tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {
 dependencies {
     compileOnly(androidJar)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.okhttp)
+    api(libs.kotlinx.serialization.json)
+    api(libs.okhttp)
 
     testCompileOnly(androidJar)
     testImplementation(libs.junit)

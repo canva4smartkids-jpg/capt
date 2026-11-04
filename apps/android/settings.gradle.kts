@@ -54,4 +54,8 @@ if (hostOnly) {
     project(":capture").buildFileName = "host.gradle.kts"
     project(":app").buildFileName = "host.gradle.kts"
     project(":tv").buildFileName = "host.gradle.kts"
+    // framework-only engine harness APK (see native/android-capture/harness/build-apk.sh)
+    include(":harness")
+    project(":harness").projectDir = file("../../native/android-capture/harness")
+    project(":harness").buildFileName = "host.gradle.kts"
 }
