@@ -1,0 +1,15 @@
+{
+  "name": "@captureone/lg-tv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LG webOS TV packaging of the CaptureOne TV companion (apps/tv-web) as an .ipk.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs --check-only"
+  },
+  "devDependencies": {
+    "@captureone/tv-web": "workspace:*",
+    "@webos-tools/cli": "^3.2.6"
+  }
+}

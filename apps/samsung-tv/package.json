@@ -1,0 +1,15 @@
+{
+  "name": "@captureone/samsung-tv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Samsung Tizen TV packaging of the CaptureOne TV companion (apps/tv-web) as a .wgt.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:unsigned": "node scripts/build.mjs --signer=none",
+    "test": "node scripts/build.mjs --check-only"
+  },
+  "devDependencies": {
+    "@captureone/tv-web": "workspace:*"
+  }
+}
