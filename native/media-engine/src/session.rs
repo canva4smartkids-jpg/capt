@@ -571,17 +571,23 @@ fn refresh_disk(shared: &Shared, plan: &Plan) {
     }
 }
 
-/// Bytes the final file will have reached by now: fragments land on disk only at keyframes,
-/// so add the not-yet-flushed part estimated from the observed (or target) bitrate.
+/// Bytes the final file will have reached by now: fragments land on disk at most every
+/// `FRAG_SEC` (or keyframe), so add the not-yet-flushed part estimated from the observed
+/// (or, before the first fragments, the target) bitrate.
 fn estimated_size(bytes_on_disk: u64, active: f64, plan: &Plan) -> u64 {
-    let kf = plan.config.video.keyframe_interval_sec;
+    // not yet on disk: the open fragment + frames inside the encoder (lookahead / frame
+    // threads, ~0.5 s) + one supervisor tick until the stop takes effect
+    let lag = crate::args::FRAG_SEC.min(plan.config.video.keyframe_interval_sec) + ENCODER_DELAY_SEC + 0.1;
     let target_rate = (plan.video_kbps as f64 + plan.config.audio.bitrate_kbps as f64 * plan.audio_kinds.len() as f64) * 1000.0 / 8.0;
-    if active <= kf + 1.0 || bytes_on_disk == 0 {
+    if active <= 2.0 * lag || bytes_on_disk == 0 {
         return (target_rate * active * 1.3) as u64;
     }
-    let observed = bytes_on_disk as f64 / (active - kf).max(1.0);
-    bytes_on_disk + (observed * (kf + 0.5) * 1.3) as u64
+    let observed = bytes_on_disk as f64 / (active - lag).max(0.25);
+    bytes_on_disk + (observed * lag * 1.5) as u64 + bytes_on_disk / 50 + 64 * 1024
 }
+
+/// Typical encoder pipeline delay (x264 lookahead / frame threads, hardware queues).
+const ENCODER_DELAY_SEC: f64 = 0.6;
 
 fn check_limits(shared: &Shared, plan: &Plan) -> Option<StopReason> {
     let lim = &plan.config.limits;
@@ -907,8 +913,8 @@ mod tests {
         let p = plan_for(8000, 2.0); // 1 MB/s target
         // early: projected from the target bitrate
         assert_eq!(estimated_size(0, 1.0, &p), 1_300_000);
-        // later: observed rate (1 MB on disk covering ~3 s) plus ~2.5 s unflushed
+        // later: observed rate (1 MB on disk covering ~3.8 s) plus ~1.2 s unflushed
         let e = estimated_size(1_000_000, 5.0, &p);
-        assert!(e > 1_000_000 && e < 2_200_000, "{e}");
+        assert!(e > 1_350_000 && e < 1_700_000, "{e}");
     }
 }

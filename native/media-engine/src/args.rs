@@ -14,6 +14,9 @@ fn p(path: &Path) -> String {
 
 /// Fragmented MP4 flags for crash-safe intermediates.
 pub const FRAG_VIDEO_MOVFLAGS: &str = "+frag_keyframe+empty_moov+default_base_moof";
+/// Maximum fragment length: bounds data lost on a crash and data not yet visible on disk.
+pub const FRAG_SEC: f64 = 0.5;
+const FRAG_US: &str = "500000";
 
 #[derive(Debug, Clone)]
 pub struct VideoEncodeSpec {
@@ -61,7 +64,8 @@ pub fn video_encode_args(v: &VideoEncodeSpec) -> Vec<String> {
     if is_hevc(&v.encoder) {
         a.extend([s("-tag:v"), s("hvc1")]);
     }
-    a.extend([s("-an"), s("-movflags"), s(FRAG_VIDEO_MOVFLAGS), s("-flush_packets"), s("1"), s("-f"), s("mp4"), s("-y"), p(&v.out_path)]);
+    a.extend([s("-an"), s("-movflags"), s(FRAG_VIDEO_MOVFLAGS), s("-frag_duration"), s(FRAG_US), s("-flush_packets"), s("1")]);
+    a.extend([s("-f"), s("mp4"), s("-y"), p(&v.out_path)]);
     a
 }
 
@@ -73,7 +77,7 @@ pub struct AudioEncodeSpec {
     pub out_path: PathBuf,
 }
 
-/// f32le PCM on stdin -> AAC in a fragmented .m4a (1 s fragments).
+/// f32le PCM on stdin -> AAC in a fragmented .m4a (0.5 s fragments).
 pub fn audio_encode_args(a: &AudioEncodeSpec) -> Vec<String> {
     vec![
         s("-hide_banner"),
@@ -95,7 +99,7 @@ pub fn audio_encode_args(a: &AudioEncodeSpec) -> Vec<String> {
         s("-movflags"),
         s("+empty_moov+default_base_moof"),
         s("-frag_duration"),
-        s("1000000"),
+        s(FRAG_US),
         s("-flush_packets"),
         s("1"),
         s("-f"),
@@ -217,7 +221,7 @@ mod tests {
         let j = joined(&a);
         assert!(j.contains("-f rawvideo -pix_fmt bgra -s 1920x1080 -r 30 -i -"), "{j}");
         assert!(j.contains("scale=1280:720:flags=bicubic:out_color_matrix=bt709:out_range=tv,format=yuv420p"), "{j}");
-        assert!(j.contains("-movflags +frag_keyframe+empty_moov+default_base_moof"));
+        assert!(j.contains("-movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 500000"));
         assert!(j.ends_with("-f mp4 -y /tmp/s/video.mp4"));
         assert!(!j.contains("hvc1"));
         // -i - must come before the codec args
@@ -245,7 +249,7 @@ mod tests {
         let a = audio_encode_args(&AudioEncodeSpec { sample_rate: 48000, channels: 2, bitrate_kbps: 160, out_path: "a.m4a".into() });
         let j = joined(&a);
         assert!(j.contains("-f f32le -ar 48000 -ac 2 -i - -c:a aac -b:a 160k"));
-        assert!(j.contains("-frag_duration 1000000"));
+        assert!(j.contains("-frag_duration 500000"));
     }
 
     fn mux(mode: TrackMode, n: usize) -> String {

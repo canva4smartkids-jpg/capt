@@ -11,8 +11,54 @@ use crate::probe::{codec_from_name, run_ffprobe, Expectation};
 use crate::EngineInner;
 use capture_core::*;
 use fs2::FileExt;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+
+/// Length of the prefix of a fragmented MP4 that consists of complete top-level boxes and
+/// ends after a complete `moof`+`mdat` pair. A process killed mid-write leaves a partial
+/// last fragment; remuxing it would copy a truncated (corrupt) packet.
+pub(crate) fn fmp4_complete_len<R: Read + Seek>(r: &mut R, file_len: u64) -> std::io::Result<u64> {
+    let (mut off, mut good, mut pending_moof) = (0u64, 0u64, false);
+    while off + 8 <= file_len {
+        r.seek(SeekFrom::Start(off))?;
+        let mut h = [0u8; 16];
+        let want = (file_len - off).min(16) as usize;
+        r.read_exact(&mut h[..want])?;
+        let size = match u32::from_be_bytes([h[0], h[1], h[2], h[3]]) {
+            0 => break, // "extends to EOF": cannot be trusted in a file that was still growing
+            1 if want == 16 => u64::from_be_bytes([h[8], h[9], h[10], h[11], h[12], h[13], h[14], h[15]]),
+            1 => break,
+            n => n as u64,
+        };
+        if size < 8 || off.saturating_add(size) > file_len {
+            break;
+        }
+        match &h[4..8] {
+            b"moof" => pending_moof = true,
+            b"mdat" => {
+                pending_moof = false;
+                good = off + size;
+            }
+            _ if !pending_moof => good = off + size,
+            _ => {}
+        }
+        off += size;
+    }
+    Ok(good)
+}
+
+/// Truncates an interrupted fragmented MP4 to its last complete fragment.
+fn trim_fragmented(path: &Path) -> std::io::Result<()> {
+    let mut f = std::fs::OpenOptions::new().read(true).write(true).open(path)?;
+    let len = f.metadata()?.len();
+    let good = fmp4_complete_len(&mut f, len)?;
+    if good > 0 && good < len {
+        log::info!("trimming {} from {len} to {good} bytes (incomplete last fragment)", path.display());
+        f.set_len(good)?;
+    }
+    Ok(())
+}
 
 /// True if another live session (any process) holds the session lock.
 fn is_locked(dir: &Path) -> bool {
@@ -63,6 +109,11 @@ fn recover_one(engine: &EngineInner, output_dir: &Path, dir: &Path, manifest: Op
     let ffprobe = engine.ffprobe.clone().ok_or_else(|| CaptureError::new(CaptureErrorCode::EncoderUnavailable, "ffprobe not found"))?;
     let id = manifest.as_ref().map(|m| m.session_id.clone()).unwrap_or_else(|| dir.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default());
     let video = dir.join(VIDEO_FILE);
+    for f in std::iter::once(video.clone()).chain([AudioSourceKind::Microphone, AudioSourceKind::System].iter().map(|k| dir.join(k.file_name()))) {
+        if non_empty(&f) {
+            let _ = trim_fragmented(&f);
+        }
+    }
     let vprobe = if non_empty(&video) { run_ffprobe(&ffprobe, &video).ok().filter(|p| p.video.is_some()) } else { None };
     let Some(vprobe) = vprobe else {
         // Killed before the first fragment reached the disk: nothing to salvage.
@@ -131,4 +182,53 @@ fn recover_one(engine: &EngineInner, output_dir: &Path, dir: &Path, manifest: Op
         let _ = write_manifest(dir, &m);
     }
     Ok(meta)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bx(typ: &[u8; 4], payload: usize) -> Vec<u8> {
+        let mut v = ((payload + 8) as u32).to_be_bytes().to_vec();
+        v.extend_from_slice(typ);
+        v.extend(std::iter::repeat(0u8).take(payload));
+        v
+    }
+
+    fn len_of(data: &[u8]) -> u64 {
+        fmp4_complete_len(&mut std::io::Cursor::new(data), data.len() as u64).unwrap()
+    }
+
+    #[test]
+    fn keeps_complete_fragments_only() {
+        let mut d = bx(b"ftyp", 16);
+        d.extend(bx(b"moov", 100));
+        let header = d.len() as u64;
+        assert_eq!(len_of(&d), header);
+        d.extend(bx(b"moof", 50));
+        assert_eq!(len_of(&d), header, "moof without mdat is incomplete");
+        d.extend(bx(b"mdat", 1000));
+        let one = d.len() as u64;
+        assert_eq!(len_of(&d), one);
+        d.extend(bx(b"moof", 50));
+        let mut partial = bx(b"mdat", 1000);
+        partial.truncate(400);
+        d.extend(partial);
+        assert_eq!(len_of(&d), one, "truncated mdat drops the whole last fragment");
+        d.truncate(one as usize + 5);
+        assert_eq!(len_of(&d), one, "truncated box header");
+    }
+
+    #[test]
+    fn handles_64bit_sizes_and_garbage() {
+        let mut d = bx(b"ftyp", 8);
+        let mut large = 1u32.to_be_bytes().to_vec();
+        large.extend_from_slice(b"mdat");
+        large.extend_from_slice(&(16u64 + 32).to_be_bytes());
+        large.extend(std::iter::repeat(1u8).take(32));
+        d.extend(large);
+        assert_eq!(len_of(&d), d.len() as u64);
+        assert_eq!(len_of(&[0u8; 3]), 0);
+        assert_eq!(len_of(&[0, 0, 0, 4, b'b', b'a', b'd', b'!']), 0, "size < 8 is invalid");
+    }
 }
