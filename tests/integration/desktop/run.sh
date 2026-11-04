@@ -72,6 +72,7 @@ PIDS+=($!)
 sleep 2
 
 STATUS=0
+export PYTHONDONTWRITEBYTECODE=1
 python3 "$HERE/test_desktop.py" "${PYARGS[@]}" || STATUS=$?
 if [ "$MEMORY" = 1 ]; then
   python3 "$HERE/memory_probe.py" || STATUS=$?

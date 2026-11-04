@@ -5,6 +5,10 @@ Every recording is verified with ffprobe (duration, dimensions, codec, frame cou
 streams) and, for audio, with ffmpeg's volumedetect. Results are summarized in
 $CAPTUREONE_TEST_WORK/results.json.
 """
+import sys
+
+sys.dont_write_bytecode = True  # keep the source tree clean (av_sync is imported)
+
 import glob
 import json
 import os
