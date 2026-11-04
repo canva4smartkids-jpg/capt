@@ -192,7 +192,7 @@ impl LoopbackSession {
         let en = enumerator().map_err(|e| CaptureError::internal(format!("MMDeviceEnumerator unavailable: {e}")))?;
         // SAFETY: COM calls on the loopback (MTA) thread; the mix format is freed below.
         unsafe {
-            let device = match device_id.filter(|id| !id.is_empty() && !id.eq_ignore_ascii_case("default")) {
+            let device = match device_id.filter(|id| !crate::ids::is_default_audio_device(Some(id))) {
                 Some(id) => {
                     let w = wide(id);
                     en.GetDevice(PCWSTR(w.as_ptr()))
@@ -371,7 +371,7 @@ fn loopback_thread(device_id: Option<String>, sink: Arc<dyn AudioSink>, stop: Ar
             return;
         }
     };
-    let follow_default = device_id.as_deref().is_none_or(|id| id.is_empty() || id.eq_ignore_ascii_case("default"));
+    let follow_default = crate::ids::is_default_audio_device(device_id.as_deref());
     while !stop.load(Ordering::Acquire) {
         std::thread::sleep(POLL);
         let err = match session.drain(&*sink) {

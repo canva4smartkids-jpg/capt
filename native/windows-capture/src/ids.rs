@@ -61,6 +61,18 @@ pub fn display_number(device_name: &str) -> Option<u32> {
     upper.strip_prefix("DISPLAY")?.parse().ok()
 }
 
+/// True when a system-audio `device_id` means "the default output device": absent, empty, or one
+/// of the aliases used by callers (`default`, media-engine's `system-default`, `loopback`).
+/// Anything else is treated as an `IMMDevice` endpoint id (`{0.0.0.00000000}.{guid}`).
+pub fn is_default_audio_device(id: Option<&str>) -> bool {
+    match id.map(str::trim) {
+        None | Some("") => true,
+        Some(v) => ["default", "system-default", "system", "loopback", "loopback-default"]
+            .iter()
+            .any(|a| v.eq_ignore_ascii_case(a)),
+    }
+}
+
 pub fn format_window_id(hwnd: isize) -> String {
     hwnd.to_string()
 }
@@ -111,6 +123,15 @@ mod tests {
         assert_eq!(canonical_device_name("display1"), r"\\.\DISPLAY1");
         assert_eq!(display_number(r"\\.\DISPLAY12"), Some(12));
         assert_eq!(display_number("WinDisc"), None);
+    }
+
+    #[test]
+    fn default_audio_aliases() {
+        assert!(is_default_audio_device(None));
+        assert!(is_default_audio_device(Some("")));
+        assert!(is_default_audio_device(Some("system-default")));
+        assert!(is_default_audio_device(Some("Default")));
+        assert!(!is_default_audio_device(Some("{0.0.0.00000000}.{8f3d4b2a-0000-4c1e-9c4a-1234567890ab}")));
     }
 
     #[test]
