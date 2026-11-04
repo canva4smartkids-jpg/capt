@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Foreground service hosting MediaProjection capture (API 28+ / 34+ typed permission). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Recording notification with timer and controls (runtime permission on API 33+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Microphone, and AudioPlaybackCapture (internal audio, API 29+) which also requires it. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Publishing to Movies/Pictures on API 26–28 only; API 29+ uses MediaStore without permission. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <!-- Companion mode (LAN connection to the CaptureOne desktop hub). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <queries>
+        <!-- MediaProjection consent activity lives in SystemUI; needed to check that it resolves. -->
+        <package android:name="com.android.systemui" />
+        <!-- Google TV launcher: distinguishes Google TV from Android TV in the capability report. -->
+        <package android:name="com.google.android.apps.tv.launcherx" />
+    </queries>
+
+    <application>
+        <service
+            android:name="dev.captureone.capture.service.CaptureService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+    </application>
+</manifest>
