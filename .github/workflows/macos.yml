@@ -158,8 +158,11 @@ jobs:
         timeout-minutes: 10
         env:
           CAPTUREONE_LIVE_CAPTURE: "1"
+          CAPTUREONE_LIVE_CLOSE_APP: Calculator
         run: |
           set -o pipefail
+          # A real titled window to list, capture and close (the runner's desktop has none).
+          open -a Calculator && sleep 3 || echo "::warning::could not open Calculator"
           cargo test -p macos-capture --test macos_live -- --test-threads=1 --nocapture 2>&1 | tee "$OUT/live-tests.log"
 
       - name: Live tests with the macOS 12.3–13 screenshot path forced
@@ -170,6 +173,7 @@ jobs:
           CAPTUREONE_MACOS_FORCE_STREAM_SCREENSHOT: "1"
         run: |
           set -o pipefail
+          open -a Calculator && sleep 3 || true
           cargo test -p macos-capture --test macos_live live_sources_and_screenshots -- --test-threads=1 --nocapture 2>&1 | tee "$OUT/live-tests-forced-stream.log"
 
       - name: Install ffmpeg
@@ -225,6 +229,41 @@ jobs:
           step record-audio record --target "$target" --duration 5 --codec h264 --system-audio --out "$MEDIA/record-audio"
           if [ -n "$display_id" ]; then
             step record-region record --target "region:$display_id:0,0,640,360" --duration 3 --codec h264 --out "$MEDIA/record-region"
+          fi
+
+          # Window capture: open Calculator, screenshot it, then close it while recording
+          # (expects the engine to stop with stopReason "source-closed" and a valid partial file).
+          open -a Calculator; sleep 3
+          step sources-windows sources --kind window
+          window_id=$(python3 - "$OUT/cli-sources-windows.json" <<'PY'
+          import json, sys
+          try:
+              data = json.load(open(sys.argv[1]))
+          except Exception:
+              sys.exit(0)
+          for s in data if isinstance(data, list) else []:
+              if isinstance(s, dict) and s.get("appName") == "Calculator":
+                  print(s.get("id", ""))
+                  break
+          PY
+          )
+          echo "Calculator window id: ${window_id:-<none>}"
+          if [ -n "$window_id" ]; then
+            mkdir -p "$MEDIA/screenshot-window" "$MEDIA/record-window-close"
+            step screenshot-window screenshot --target "window:$window_id" --out "$MEDIA/screenshot-window"
+            "$CLI" record --target "window:$window_id" --duration 10 --codec h264 --out "$MEDIA/record-window-close" \
+              > "$OUT/cli-record-window-close.json" 2> "$OUT/cli-record-window-close.err" &
+            rec_pid=$!
+            sleep 4
+            pkill -x Calculator
+            wait "$rec_pid"; rc=$?
+            cat "$OUT/cli-record-window-close.json"; grep -E '"event":"(completed|final|warning|error)"' "$OUT/cli-record-window-close.err"
+            echo "captureone-cli record-window-close: exit $rc"
+            if [ "$rc" -ne 0 ] || ! grep -q '"stopReason":"source-closed"' "$OUT/cli-record-window-close.err"; then
+              echo "::warning::window-close recording did not finish with stopReason source-closed"; status=1
+            fi
+          else
+            echo "::warning::no Calculator window listed; window capture not exercised"; status=1
           fi
           echo "Produced media:"; find "$MEDIA" -type f -print | tee "$OUT/media-files.txt"
           exit $status
@@ -291,6 +330,9 @@ jobs:
           check("record", "record/**/*.mp4", video(4.0, 7.0))
           check("record-audio", "record-audio/**/*.mp4", video(4.0, 7.0, audio=True))
           check("record-region", "record-region/**/*.mp4", video(2.0, 5.0, size=(640, 360)))
+          check("screenshot-window", "screenshot-window/**/*.png", screenshot)
+          # closed after ~4 s of a 10 s recording: must have stopped early
+          check("record-window-close", "record-window-close/**/*.mp4", video(1.5, 8.0))
           for f in failures:
               print("FAIL", f)
           sys.exit(1 if failures else 0)

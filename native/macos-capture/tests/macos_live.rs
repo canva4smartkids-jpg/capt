@@ -106,12 +106,66 @@ fn live_sources_and_screenshots() {
     let forced = std::env::var(macos_capture::FORCE_STREAM_SCREENSHOT_ENV).is_ok_and(|v| v == "1");
     println!("screenshot path: {}", if forced { "single-frame SCStream (forced)" } else { "default for this macOS" });
 
-    if let Some(window) = sources.iter().find(|s| s.kind == SourceKind::Window) {
-        match b.screenshot(&CaptureTarget::Window { window_id: window.id.clone() }, false) {
-            Ok(f) => println!("window '{}' screenshot {}x{} (listed {}x{})", window.name, f.width, f.height, window.width, window.height),
-            Err(e) => panic!("window screenshot failed: {e:?}"),
+    match sources.iter().find(|s| s.kind == SourceKind::Window) {
+        Some(window) => {
+            let f = b.screenshot(&CaptureTarget::Window { window_id: window.id.clone() }, false).expect("window screenshot");
+            println!(
+                "window '{}' ({:?}) screenshot {}x{} (listed {}x{})",
+                window.name, window.app_name, f.width, f.height, window.width, window.height
+            );
+            assert!(f.width.abs_diff(window.width) <= 2 && f.height.abs_diff(window.height) <= 2, "window size mismatch");
         }
+        None => println!("no titled windows on screen; window capture not exercised"),
     }
+}
+
+/// Closes an application's window while its window stream runs and expects `SourceClosed`.
+/// Opt-in (it kills the app): `CAPTUREONE_LIVE_CLOSE_APP=Calculator`.
+#[test]
+fn live_window_close_reports_source_closed() {
+    if !live() {
+        return;
+    }
+    let Ok(app) = std::env::var("CAPTUREONE_LIVE_CLOSE_APP") else {
+        eprintln!("skipping: set CAPTUREONE_LIVE_CLOSE_APP=<app name> to run the window-close test");
+        return;
+    };
+    let b = backend();
+    let sources = b.list_sources(&[SourceKind::Window]).expect("list_sources");
+    let window = sources
+        .iter()
+        .find(|s| s.app_name.as_deref() == Some(app.as_str()))
+        .unwrap_or_else(|| panic!("no window of '{app}' in {sources:?}"));
+    let sink = Arc::new(CountingVideo::default());
+    let mut handle = b
+        .start_video(&CaptureTarget::Window { window_id: window.id.clone() }, &VideoStreamOptions { fps: 30, show_cursor: false }, sink.clone())
+        .expect("start window stream");
+    std::thread::sleep(Duration::from_secs(1));
+    let frames_before = sink.frames.load(Ordering::SeqCst);
+    let killed = std::process::Command::new("/usr/bin/pkill").args(["-x", &app]).status().expect("run pkill");
+    assert!(killed.success(), "pkill -x {app} failed");
+    let t0 = Instant::now();
+    let closed = loop {
+        if sink.events.lock().unwrap().iter().any(|e| e.contains("SourceClosed")) {
+            break true;
+        }
+        if t0.elapsed() > Duration::from_secs(6) {
+            break false;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    let latency = t0.elapsed();
+    handle.stop().expect("stop after the source closed");
+    println!(
+        "window '{}' of {app}: {frames_before} frames before close, size {:?}, events {:?}, SourceClosed after {latency:?}",
+        window.name,
+        *sink.size.lock().unwrap(),
+        sink.events.lock().unwrap()
+    );
+    assert!(frames_before >= 1, "no frames from the window before closing it");
+    assert!(closed, "no SourceClosed within 6 s of closing the window");
+    let events = sink.events.lock().unwrap();
+    assert_eq!(events.iter().filter(|e| e.contains("SourceClosed") || e.contains("Error")).count(), 1, "exactly one terminal event");
 }
 
 #[derive(Default)]
