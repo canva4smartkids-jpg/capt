@@ -97,6 +97,8 @@ class RecordingSession(
     private var muxer: MuxerSink? = null
     private var video: VideoEncoder? = null
     private var audio: AudioPipeline? = null
+    /** AudioRecords opened during start-up and not yet owned by the pipeline (released on failure). */
+    private var pendingRecords: List<Triple<AudioSourceKind, AudioRecord, Int>> = emptyList()
     private var virtualDisplay: VirtualDisplay? = null
     private var pauseClock: PauseClock? = null
     private var outputSize: Size? = null
@@ -188,6 +190,7 @@ class RecordingSession(
             records.forEach { it.second.release() }
             throw e
         }
+        pendingRecords = records
 
         displayBaseName = FileNaming.expand(config.output.fileNameTemplate, createdLocal, "Screen")
         val name = FileNaming.unique(displayBaseName, "mp4") { File(outputDir, it).exists() }
@@ -198,7 +201,6 @@ class RecordingSession(
         val sink = try {
             MuxerSink(file, expectedTracks = 1 + audioTrackCount)
         } catch (e: Exception) {
-            records.forEach { it.second.release() }
             throw CaptureException(CaptureErrorCode.IO_ERROR, "Cannot create ${file.name}: ${e.message}", cause = e)
         }
         muxer = sink
@@ -234,7 +236,6 @@ class RecordingSession(
             break
         }
         val enc = chosen ?: run {
-            records.forEach { it.second.release() }
             throw lastFailure ?: CaptureException(
                 CaptureErrorCode.ENCODER_UNAVAILABLE,
                 "No ${config.video.codec.name} encoder on this device accepts $desired.",
@@ -243,13 +244,9 @@ class RecordingSession(
         video = enc
 
         val realPipeline = AudioPipeline(config.audio, origin, clock, onError = { e -> handler.post { failInternal(e.error) } })
-        try {
-            realPipeline.open(records, sink)
-        } catch (e: Exception) {
-            records.forEach { runCatching { it.second.release() } }
-            throw e
-        }
-        audio = realPipeline.takeIf { records.isNotEmpty() }
+        audio = realPipeline // owns the AudioRecords from here on, even if open() fails half-way
+        pendingRecords = emptyList()
+        realPipeline.open(records, sink)
 
         // Android 14+: the callback must be registered before createVirtualDisplay.
         projection.registerCallback(projectionCallback, handler)
@@ -582,6 +579,8 @@ class RecordingSession(
 
     private fun releaseAll() {
         handler.removeCallbacks(ticker)
+        pendingRecords.forEach { runCatching { it.second.release() } }
+        pendingRecords = emptyList()
         try { virtualDisplay?.release() } catch (_: Exception) {}
         virtualDisplay = null
         try { audio?.release() } catch (_: Exception) {}

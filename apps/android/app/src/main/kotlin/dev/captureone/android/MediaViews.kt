@@ -62,7 +62,7 @@ fun MediaPreview(item: LibraryItem?, modifier: Modifier) {
     if (item.media.kind == MediaKind.VIDEO) VideoPlayer(item.uri, modifier) else ImageViewer(item.uri, modifier)
 }
 
-@OptIn(UnstableApi::class) // media3 marks parts of the player/view API unstable; no unstable API is relied on knowingly
+@OptIn(UnstableApi::class) // some media3 player/view APIs are marked @UnstableApi
 @Composable
 fun VideoPlayer(uri: Uri, modifier: Modifier) {
     val context = LocalContext.current

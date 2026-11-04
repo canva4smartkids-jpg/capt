@@ -106,7 +106,8 @@ jobs:
             echo "::endgroup::"
           done
           # The phone app must declare the mediaProjection foreground service; the TV app must require leanback.
-          "$BT/aapt2" dump xmltree --file AndroidManifest.xml app/build/outputs/apk/debug/app-debug.apk | grep -Eq 'foregroundServiceType.*=0x0*20$'
+          fgs=$("$BT/aapt2" dump xmltree --file AndroidManifest.xml app/build/outputs/apk/debug/app-debug.apk | sed -n 's/.*foregroundServiceType([^)]*)=\(0x[0-9a-fA-F]*\).*/\1/p' | head -1)
+          echo "CaptureService foregroundServiceType=$fgs"; [ $(( fgs & 0x20 )) -ne 0 ]  # mediaProjection bit
           "$BT/aapt2" dump badging ../android-tv/build/outputs/apk/debug/tv-debug.apk | grep -q "uses-feature: name='android.software.leanback'"
 
       - uses: actions/upload-artifact@v4

@@ -4,6 +4,8 @@
     <!-- Foreground service hosting MediaProjection capture (API 28+ / 34+ typed permission). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Microphone / playback capture inside the service needs the microphone FGS type (API 30+/34+). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <!-- Recording notification with timer and controls (runtime permission on API 33+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Microphone, and AudioPlaybackCapture (internal audio, API 29+) which also requires it. -->
@@ -28,6 +30,6 @@
         <service
             android:name="dev.captureone.capture.service.CaptureService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection|microphone" />
     </application>
 </manifest>

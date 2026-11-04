@@ -86,8 +86,16 @@ class CaptureService : Service(), RecorderListener {
 
     // ------------------------------------------------------------------ start paths
 
-    private fun goForeground(notification: Notification): Boolean = try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+    /**
+     * Enters the foreground with type mediaProjection, plus microphone when the recording uses audio
+     * and RECORD_AUDIO is granted (required for AudioRecord in a foreground service on API 30+/34+).
+     */
+    private fun goForeground(notification: Notification, withMicrophone: Boolean = false): Boolean = try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val mic = withMicrophone && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or (if (mic) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0)
+            startForeground(NOTIFICATION_ID, notification, type)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         } else {
             startForeground(NOTIFICATION_ID, notification)
@@ -127,14 +135,19 @@ class CaptureService : Service(), RecorderListener {
             CaptureController.reportStandaloneError(CaptureError(CaptureErrorCode.DEVICE_BUSY, "A recording is already in progress.", true))
             return
         }
-        if (!goForeground(buildNotification(null, "Preparing screen recording…"))) {
-            stopSelf()
-            return
-        }
         val config = try {
             CaptureJson.decodeFromString(RecordingConfig.serializer(), requireNotNull(intent.getStringExtra(EXTRA_CONFIG_JSON)))
         } catch (e: Exception) {
-            failEarly(CaptureError(CaptureErrorCode.INVALID_CONFIG, "Invalid recording configuration: ${e.message}", false))
+            null
+        }
+        val audio = config != null && (config.audio.microphone.enabled || config.audio.system.enabled)
+        // startForegroundService() obliges startForeground() even when we bail out right after.
+        if (!goForeground(buildNotification(null, "Preparing screen recording…"), withMicrophone = audio)) {
+            stopSelf()
+            return
+        }
+        if (config == null) {
+            failEarly(CaptureError(CaptureErrorCode.INVALID_CONFIG, "Invalid recording configuration.", false))
             return
         }
         val projection = projectionFrom(intent) ?: run {

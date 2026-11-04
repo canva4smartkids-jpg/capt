@@ -174,12 +174,14 @@ class AudioPipeline(
     private val running = AtomicBoolean(false)
     private var thread: Thread? = null
     private val latencyFrames = (sampleRate * LATENCY_MS / 1000).toLong()
+    private var owned: List<AudioRecord> = emptyList()
 
     /**
      * Opens [records] (kind → AudioRecord + channel count) and creates encoders writing into [muxer].
      * Ownership of the AudioRecords passes to the pipeline.
      */
     fun open(records: List<Triple<AudioSourceKind, AudioRecord, Int>>, muxer: MuxerSink) {
+        owned = records.map { it.second }
         if (records.isEmpty()) return
         val gainOf = { k: AudioSourceKind -> (if (k == AudioSourceKind.MICROPHONE) settings.microphone.gain else settings.system.gain).toFloat() }
         if (settings.trackMode == AudioTrackMode.MIXED) {
@@ -207,6 +209,7 @@ class AudioPipeline(
     val encoderLabels: List<String> get() = lanes.map { it.encoder.label }
 
     fun start() {
+        if (lanes.isEmpty()) return
         for (s in sources) s.start()
         running.set(true)
         thread = Thread({ loop() }, "c1-audio-mix").also { it.start() }
@@ -272,6 +275,8 @@ class AudioPipeline(
         running.set(false)
         thread?.interrupt()
         for (s in sources) try { s.release() } catch (_: Exception) {}
+        for (r in owned) try { r.release() } catch (_: Exception) {} // not yet wrapped if open() failed half-way
+        owned = emptyList()
         for (lane in lanes) lane.encoder.release()
         sources.clear()
         lanes.clear()
