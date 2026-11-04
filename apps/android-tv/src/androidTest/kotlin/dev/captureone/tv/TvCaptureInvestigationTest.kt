@@ -82,6 +82,10 @@ class TvCaptureInvestigationTest {
 
     @Test
     fun investigateMediaProjectionOnTv() {
+        try { investigate() } catch (t: Throwable) { fact("RESULT=TEST_EXCEPTION $t"); throw t }
+    }
+
+    private fun investigate() {
         val pkg = context.packageName
         val pm = context.packageManager
         val report: CapabilityReport = DeviceFactsCollector.capabilityReport(context)
