@@ -4,6 +4,24 @@ Sprint start: 2026-11-04 12:52 UTC. Reports are appended newest-first.
 
 ---
 
+## Final acceptance (per platform)
+
+Legend: **verified** = executed and the output inspected; **unverified** = code written/built
+but not executed on that platform; CI = GitHub-hosted runner.
+
+| Platform | Source | Build | Installation | Screenshot | Video recording | Audio capture | Tests | Outstanding limitations |
+|---|---|---|---|---|---|---|---|---|
+| Linux (X11) | complete | passed (deb/rpm/AppImage) | unverified (bundles built, not installed on a clean host) | **verified** (PNG/JPEG, region) | **verified** (H.264/H.265, 24/30/60, pause, limits, recovery) | **verified** (Pulse monitor + cpal mic, mixed/separate) | passed (25 integration + 60 unit) | X11 only; HW encoders untested |
+| macOS | complete | passed (CI macos-14 native build + Tauri app/dmg bundle) | unverified | **verified on CI runner** (SCK 1920x1080, region, legacy path) | **verified on CI runner** (CLI H.264 5.03 s 151 frames; region 640x360) | **verified on CI runner** (SCK system audio AAC 48 kHz); mic unverified | passed (40 unit + 6 live) | window capture/close pending; macOS 15, Intel runtime, VideoToolbox, signing/notarization |
+| Windows | complete | cross-check passed; CI build — see Windows row update | unverified | see CI status | see CI status | WASAPI loopback: see CI status | 27 unit (container) | MSVC link only in CI; signing |
+| Android phone/tablet | complete | engine compiled + 88 JVM tests here; AGP/Compose APK build only on CI | unverified | unverified (no device) | unverified (no device) | unverified | passed (88 JVM) | needs physical device; Play signing |
+| Android TV / Google TV | complete | as above | unverified | unverified | unverified | unverified | passed (JVM, in the 88) | device-dependent consent activity |
+| Samsung Tizen | complete (companion) | passed (.wgt signed with test certs, unsigned variant) | unverified (no TV) | unsupported (platform) | unsupported (platform; HDMI capture via desktop) | unsupported | passed (44 web + 28 E2E in Chromium) | Samsung certificate needed for retail TVs |
+| LG webOS | complete (companion) | passed (.ipk) | unverified (no TV) | experimental desktop-side SSAP screenshot, unverified | unsupported (platform; HDMI capture via desktop) | unsupported | passed (shared with Tizen) | Dev Mode / LG account; SSAP pairing on real firmware |
+| Companion hub + discovery | complete | passed | n/a | n/a | n/a | n/a | passed (58) | no real TVs; HTTP (no TLS) |
+
+---
+
 ## Report #2 — 2026-11-04 ~14:25 UTC (T+1:30)
 
 ### Actual working functionality (verified)

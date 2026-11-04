@@ -167,7 +167,7 @@ async function main() {
   await shot("settings-permissions");
 
   await go("#/devices");
-  await waitFor("hub state", () => exec(`return !!document.querySelector('.inline-alert--info');`), 10_000);
+  await waitFor("hub card", () => exec(`return !!document.querySelector("[role='switch']");`), 10_000);
   await shot("devices");
 
   // Region selection on the real overlay window.
