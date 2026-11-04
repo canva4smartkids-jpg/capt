@@ -19,6 +19,8 @@ pub struct MediaServerInfo {
     pub token: String,
 }
 
+const MAX_CONNECTIONS: usize = 32;
+
 /// Starts the server on first use; returns its address info.
 pub fn ensure(core: &Shared) -> CaptureResult<MediaServerInfo> {
     let mut slot = core.media_server.lock();
@@ -32,12 +34,19 @@ pub fn ensure(core: &Shared) -> CaptureResult<MediaServerInfo> {
     std::thread::Builder::new()
         .name("media-preview".into())
         .spawn(move || {
+            let live = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
             for stream in listener.incoming().flatten() {
+                if live.load(std::sync::atomic::Ordering::SeqCst) >= MAX_CONNECTIONS {
+                    continue; // drop the connection; the <video> element retries
+                }
+                live.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let live2 = live.clone();
                 let (core3, token3) = (core2.clone(), token.clone());
                 let _ = std::thread::Builder::new().name("media-preview-conn".into()).spawn(move || {
                     if let Err(e) = handle(stream, &core3, &token3) {
                         log::debug!("media preview connection: {e}");
                     }
+                    live2.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
                 });
             }
         })
@@ -106,7 +115,8 @@ fn respond(stream: &mut TcpStream, status: &str, extra: &str) -> std::io::Result
 
 fn handle(mut stream: TcpStream, core: &Shared, token: &str) -> std::io::Result<()> {
     stream.set_read_timeout(Some(Duration::from_secs(15)))?;
-    let mut reader = BufReader::new(stream.try_clone()?);
+    // Bound everything read from the socket (header bytes) so a local peer cannot balloon memory.
+    let mut reader = BufReader::new(stream.try_clone()?.take(16 * 1024));
     let mut request_line = String::new();
     reader.read_line(&mut request_line)?;
     let mut range = None;
@@ -232,8 +242,17 @@ mod tests {
         assert_eq!(body, (10u8..=19).collect::<Vec<_>>());
 
         assert!(get(info.port, &path, Some("bytes=200-")).0.starts_with("HTTP/1.1 416"));
-        assert!(get(info.port, &format!("/wrong-token/media/rec%201"), None).0.starts_with("HTTP/1.1 404"));
+        assert!(get(info.port, "/wrong-token/media/rec%201", None).0.starts_with("HTTP/1.1 404"));
         assert!(get(info.port, &format!("/{}/media/unknown", info.token), None).0.starts_with("HTTP/1.1 404"));
         assert!(get(info.port, &format!("/{}/media/..%2F..%2Fetc%2Fpasswd", info.token), None).0.starts_with("HTTP/1.1 404"), "ids only, never paths");
+
+        // Loopback only, random 128-bit token, and an oversized request line cannot exhaust memory.
+        assert!(TcpStream::connect(("127.0.0.1", info.port)).unwrap().local_addr().unwrap().ip().is_loopback());
+        assert_eq!(info.token.len(), 32);
+        let mut s = TcpStream::connect(("127.0.0.1", info.port)).unwrap();
+        let _ = s.write_all(format!("GET /{}/media/{} HTTP/1.1\r\n\r\n", info.token, "a".repeat(200_000)).as_bytes());
+        let mut sink = Vec::new();
+        let _ = s.read_to_end(&mut sink);
+        assert!(!String::from_utf8_lossy(&sink).contains("200 OK"));
     }
 }

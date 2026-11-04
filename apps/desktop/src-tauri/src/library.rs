@@ -175,6 +175,21 @@ impl Library {
         if !src.is_file() {
             return Err(CaptureError::new(CaptureErrorCode::SourceNotFound, format!("{} no longer exists", src.display())));
         }
+        // The destination comes from the webview: keep it to a plain, same-type file path so a
+        // compromised UI cannot overwrite dotfiles, launchers or other library recordings.
+        if !destination.is_absolute() || destination.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+            return Err(CaptureError::invalid_config("export destination must be an absolute path without '..'"));
+        }
+        let ext = |p: &Path| p.extension().map(|e| e.to_string_lossy().to_ascii_lowercase());
+        if ext(destination).is_none() || ext(destination) != ext(&src) {
+            return Err(CaptureError::invalid_config("export destination must keep the file extension of the recording"));
+        }
+        if destination.is_dir() || std::fs::symlink_metadata(destination).map(|m| m.file_type().is_symlink()).unwrap_or(false) {
+            return Err(CaptureError::invalid_config("export destination must be a regular file path"));
+        }
+        if self.contains_path(&destination.to_string_lossy())? {
+            return Err(CaptureError::invalid_config("export destination is another library item"));
+        }
         let same = match (std::fs::canonicalize(&src), destination.parent().and_then(|p| std::fs::canonicalize(p).ok())) {
             (Ok(a), Some(dir)) => destination.file_name().map(|f| dir.join(f) == a).unwrap_or(false),
             _ => false,
@@ -342,6 +357,12 @@ mod tests {
         let again = lib.rename("a", "Sprint demo: final", true).unwrap();
         assert_eq!(again.path, m.path);
 
+        // Titles can never steer the file outside its folder.
+        let m = lib.rename("a", "../../etc/cron.d/evil", true).unwrap();
+        assert_eq!(Path::new(&m.path).parent().unwrap(), dir.path());
+        assert!(!m.file_name.contains('/') && m.file_name.ends_with(".mp4"));
+        let m = lib.rename("a", "..", true).unwrap();
+        assert_eq!(Path::new(&m.path).parent().unwrap(), dir.path());
         assert_eq!(lib.rename("a", "   ", false).unwrap_err().code, CaptureErrorCode::InvalidConfig);
         assert_eq!(lib.rename("missing", "x", false).unwrap_err().code, CaptureErrorCode::SourceNotFound);
     }
@@ -375,6 +396,12 @@ mod tests {
         assert_eq!(lib.export("a", &dest).unwrap(), dest);
         assert_eq!(std::fs::read(&dest).unwrap().len(), 1000);
         assert_eq!(lib.export("a", &dir.path().join("a.mp4")).unwrap_err().code, CaptureErrorCode::InvalidConfig);
+        // Hardening: relative, traversal, wrong extension, directory and other-library-item targets.
+        for bad in [PathBuf::from("rel/copy.mp4"), dir.path().join("../escape.mp4"), dir.path().join(".bashrc"), dir.path().join("copy.desktop"), dir.path().join("exports")] {
+            assert_eq!(lib.export("a", &bad).unwrap_err().code, CaptureErrorCode::InvalidConfig, "{bad:?}");
+        }
+        lib.upsert(&sample(dir.path(), "b", "b.mp4", MediaKind::Video, "2026-11-04T11:00:00Z")).unwrap();
+        assert_eq!(lib.export("a", &dir.path().join("b.mp4")).unwrap_err().code, CaptureErrorCode::InvalidConfig);
         std::fs::remove_file(dir.path().join("a.mp4")).unwrap();
         assert_eq!(lib.export("a", &dest).unwrap_err().code, CaptureErrorCode::SourceNotFound);
     }

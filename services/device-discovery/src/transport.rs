@@ -214,6 +214,10 @@ impl HttpResponse {
 /// anyway because some embedded servers ignore the request version).
 pub fn http_get(url: &str, expected_ip: Option<IpAddr>, pin: Option<String>, timeout: Duration, max_bytes: usize) -> CaptureResult<HttpResponse> {
     let u = parse_url(url)?;
+    // The path is written into the request line verbatim: refuse anything that could split it.
+    if u.path.bytes().any(|b| b <= b' ' || b == 0x7f) {
+        return Err(net_err("refusing URL with whitespace or control characters in its path"));
+    }
     let ip: IpAddr = u.host.parse().map_err(|_| net_err(format!("non-IP host in {url}")))?;
     if let Some(exp) = expected_ip {
         if exp != ip {
@@ -307,6 +311,20 @@ pub fn base64(data: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn http_get_refuses_foreign_hosts_and_request_splitting() {
+        let t = Duration::from_millis(200);
+        let ip: IpAddr = "192.168.1.50".parse().unwrap();
+        // SSRF: a LOCATION pointing anywhere but the responding device is refused before connecting.
+        let e = http_get("http://10.0.0.1:80/desc.xml", Some(ip), None, t, 1024).unwrap_err();
+        assert!(e.message.contains("expected host"), "{}", e.message);
+        let e = http_get("http://localhost/desc.xml", Some(ip), None, t, 1024).unwrap_err();
+        assert!(e.message.contains("non-IP host"), "{}", e.message);
+        // Header injection through the path.
+        let e = http_get("http://192.168.1.50/a\r\nX-Evil: 1", Some(ip), None, t, 1024).unwrap_err();
+        assert!(e.message.contains("control characters"), "{}", e.message);
+    }
 
     #[test]
     fn urls() {

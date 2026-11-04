@@ -4920,6 +4920,22 @@
   "class": "permissive"
  },
  {
+  "ecosystem": "npm-workspace",
+  "name": "@captureone/design-system",
+  "version": "link:../../packages/design-system",
+  "license": "first-party",
+  "repository": "",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "npm-workspace",
+  "name": "@captureone/shared-types",
+  "version": "link:../../packages/shared-types",
+  "license": "first-party",
+  "repository": "",
+  "class": "permissive"
+ },
+ {
   "ecosystem": "npm",
   "name": "@tauri-apps/api",
   "version": "2.12.4",
@@ -4929,18 +4945,34 @@
  },
  {
   "ecosystem": "npm",
-  "name": "@tauri-apps/plugin-dialog",
-  "version": "2.8.4",
-  "license": "MIT OR Apache-2.0",
-  "repository": "https://github.com/tauri-apps/plugins-workspace#readme",
-  "class": "permissive"
- },
- {
-  "ecosystem": "npm",
   "name": "react",
   "version": "19.3.1",
   "license": "MIT",
   "repository": "https://react.dev/",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "npm",
+  "name": "zod",
+  "version": "4.6.7",
+  "license": "MIT",
+  "repository": "https://zod.dev",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "npm-workspace",
+  "name": "@captureone/capture-contracts",
+  "version": "link:../../packages/capture-contracts",
+  "license": "first-party",
+  "repository": "",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "npm",
+  "name": "@tauri-apps/plugin-dialog",
+  "version": "2.8.4",
+  "license": "MIT OR Apache-2.0",
+  "repository": "",
   "class": "permissive"
  },
  {
@@ -4960,11 +4992,323 @@
   "class": "permissive"
  },
  {
-  "ecosystem": "npm",
-  "name": "zod",
-  "version": "4.6.7",
-  "license": "MIT",
-  "repository": "https://zod.dev",
+  "ecosystem": "npm-workspace",
+  "name": "@captureone/settings",
+  "version": "link:../../packages/settings",
+  "license": "first-party",
+  "repository": "",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "npm-workspace",
+  "name": "@captureone/media-metadata",
+  "version": "link:../../packages/media-metadata",
+  "license": "first-party",
+  "repository": "",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "npm-workspace",
+  "name": "@captureone/capture-contracts",
+  "version": "link:../capture-contracts",
+  "license": "first-party",
+  "repository": "",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "npm-workspace",
+  "name": "@captureone/settings",
+  "version": "link:../settings",
+  "license": "first-party",
+  "repository": "",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.kotlinx:kotlinx-coroutines-core",
+  "version": "1.10.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.kotlinx:kotlinx-coroutines-android",
+  "version": "1.10.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.kotlinx:kotlinx-coroutines-test",
+  "version": "1.10.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; test-only",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.kotlinx:kotlinx-serialization-json",
+  "version": "1.9.0",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "com.squareup.okhttp3:okhttp",
+  "version": "4.12.0",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "com.squareup.okhttp3:mockwebserver",
+  "version": "4.12.0",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; test-only",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.core:core-ktx",
+  "version": "1.16.0",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.activity:activity-compose",
+  "version": "1.10.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.lifecycle:lifecycle-runtime-compose",
+  "version": "2.9.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.lifecycle:lifecycle-viewmodel-compose",
+  "version": "2.9.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose:compose-bom",
+  "version": "2025.06.01",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose.ui:ui",
+  "version": "(BOM)",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose.ui:ui-graphics",
+  "version": "(BOM)",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose.ui:ui-tooling",
+  "version": "(BOM)",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose.ui:ui-tooling-preview",
+  "version": "(BOM)",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose.foundation:foundation",
+  "version": "(BOM)",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose.material3:material3",
+  "version": "(BOM)",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.compose.material:material-icons-core",
+  "version": "(BOM)",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.media3:media3-exoplayer",
+  "version": "1.6.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.media3:media3-ui",
+  "version": "1.6.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.media3:media3-datasource",
+  "version": "1.6.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.tv:tv-material",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; shipped",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "junit:junit",
+  "version": "4.13.2",
+  "license": "EPL-1.0",
+  "repository": "",
+  "note": "declared, not resolved; test-only",
+  "class": "weak-copyleft"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "com.networknt:json-schema-validator",
+  "version": "1.5.6",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; test-only",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.test:runner",
+  "version": "1.6.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; test-only",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.test:core",
+  "version": "1.6.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; test-only",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "androidx.test.ext:junit",
+  "version": "1.2.1",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; test-only",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.compose.runtime:runtime-desktop",
+  "version": "1.8.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; host-mode only (never packaged)",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.compose.foundation:foundation-desktop",
+  "version": "1.8.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; host-mode only (never packaged)",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.compose.ui:ui-desktop",
+  "version": "1.8.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; host-mode only (never packaged)",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.compose.material3:material3-desktop",
+  "version": "1.8.2",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; host-mode only (never packaged)",
+  "class": "permissive"
+ },
+ {
+  "ecosystem": "maven",
+  "name": "org.jetbrains.compose.material:material-icons-core-desktop",
+  "version": "1.7.3",
+  "license": "Apache-2.0",
+  "repository": "",
+  "note": "declared, not resolved; host-mode only (never packaged)",
   "class": "permissive"
  }
 ]

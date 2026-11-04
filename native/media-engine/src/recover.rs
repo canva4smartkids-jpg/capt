@@ -100,6 +100,22 @@ pub(crate) fn recover_sessions(engine: &EngineInner, output_dir: &Path) -> Vec<C
     results
 }
 
+/// Ids are used in file names: ASCII alphanumerics, `-` and `_` only.
+pub(crate) fn is_safe_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+}
+
+fn sanitize_id(s: &str) -> String {
+    let t: String = s.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).take(64).collect();
+    if t.is_empty() { "recovered".into() } else { t }
+}
+
+/// A bare file name (no separators, no `..`, not absolute); anything else is ignored.
+pub(crate) fn plain_file_name(name: &str) -> Option<&str> {
+    let ok = !name.is_empty() && name != "." && name != ".." && !name.contains(['/', '\\', '\0', ':']);
+    ok.then_some(name)
+}
+
 fn non_empty(p: &Path) -> bool {
     std::fs::metadata(p).map(|m| m.len() > 0).unwrap_or(false)
 }
@@ -107,7 +123,10 @@ fn non_empty(p: &Path) -> bool {
 fn recover_one(engine: &EngineInner, output_dir: &Path, dir: &Path, manifest: Option<SessionManifest>) -> CaptureResult<MediaMetadata> {
     let ffmpeg = engine.ffmpeg.clone().ok_or_else(|| CaptureError::new(CaptureErrorCode::EncoderUnavailable, "ffmpeg not found"))?;
     let ffprobe = engine.ffprobe.clone().ok_or_else(|| CaptureError::new(CaptureErrorCode::EncoderUnavailable, "ffprobe not found"))?;
-    let id = manifest.as_ref().map(|m| m.session_id.clone()).unwrap_or_else(|| dir.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default());
+    // session.json is untrusted input (it lives in a user-writable folder): the id ends up in a
+    // temp file name and the audio file names are joined onto the session dir.
+    let dir_name = dir.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+    let id = manifest.as_ref().map(|m| m.session_id.clone()).filter(|i| is_safe_id(i)).unwrap_or_else(|| sanitize_id(&dir_name));
     let video = dir.join(VIDEO_FILE);
     for f in std::iter::once(video.clone()).chain([AudioSourceKind::Microphone, AudioSourceKind::System].iter().map(|k| dir.join(k.file_name()))) {
         if non_empty(&f) {
@@ -124,7 +143,7 @@ fn recover_one(engine: &EngineInner, output_dir: &Path, dir: &Path, manifest: Op
 
     // Audio intermediates listed in the manifest (or found on disk) that ffprobe can read.
     let candidates: Vec<(String, PathBuf)> = match &manifest {
-        Some(m) if !m.audio.is_empty() => m.audio.iter().map(|a| (a.label.clone(), dir.join(&a.file))).collect(),
+        Some(m) if !m.audio.is_empty() => m.audio.iter().filter_map(|a| Some((a.label.clone(), dir.join(plain_file_name(&a.file)?)))).collect(),
         _ => [AudioSourceKind::Microphone, AudioSourceKind::System].iter().map(|k| (k.label().to_string(), dir.join(k.file_name()))).collect(),
     };
     let audio: Vec<MuxAudioInput> = candidates
@@ -197,6 +216,19 @@ mod tests {
 
     fn len_of(data: &[u8]) -> u64 {
         fmp4_complete_len(&mut std::io::Cursor::new(data), data.len() as u64).unwrap()
+    }
+
+    #[test]
+    fn untrusted_manifest_fields_are_constrained() {
+        assert!(is_safe_id("3f2a-91_b"));
+        for bad in ["", "../../x", "a/b", "a\\b", "x y", &"a".repeat(65)] {
+            assert!(!is_safe_id(bad), "{bad}");
+        }
+        assert_eq!(sanitize_id("../../etc"), "______etc");
+        for bad in ["/etc/passwd", "../x.m4a", "a/b.m4a", "C:\\x.m4a", "http://h/x", "..", ""] {
+            assert!(plain_file_name(bad).is_none(), "{bad}");
+        }
+        assert_eq!(plain_file_name("audio-mic.m4a"), Some("audio-mic.m4a"));
     }
 
     #[test]

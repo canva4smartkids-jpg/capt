@@ -44,7 +44,25 @@ data class HubAddress(val host: String, val port: Int = CompanionProtocol.DEFAUL
             return m.groupValues.drop(1).all { part -> part.toInt() in 0..255 && (part.length == 1 || !part.startsWith("0")) }
         }
 
-        /** Parses `host[:port]`. Returns null for anything that is not an IPv4 address or host name. */
+        /** RFC 1918, loopback, link-local and CGNAT (Tailscale-style) IPv4 ranges. */
+        fun isPrivateIpv4(s: String): Boolean {
+            if (!isValidIpv4(s)) return false
+            val (a, b) = s.split('.').map { it.toInt() }.take(2)
+            return a == 10 || a == 127 || (a == 172 && b in 16..31) || (a == 192 && b == 168) || (a == 169 && b == 254) || (a == 100 && b in 64..127)
+        }
+
+        private val LAN_SUFFIXES = listOf(".local", ".lan", ".home", ".home.arpa", ".internal", ".localdomain")
+
+        /** Single-label or mDNS/LAN-style names only: the pairing token travels in clear text. */
+        fun isLanHostname(h: String): Boolean {
+            val l = h.lowercase()
+            return !l.contains('.') || LAN_SUFFIXES.any { l.endsWith(it) }
+        }
+
+        /**
+         * Parses `host[:port]`. Returns null for anything that is not a private-network IPv4 address or
+         * a LAN-style host name (protocol v1 is plain HTTP, so public hosts are refused).
+         */
         fun parse(input: String): HubAddress? {
             val s = input.trim()
             if (s.isEmpty()) return null
@@ -54,8 +72,8 @@ data class HubAddress(val host: String, val port: Int = CompanionProtocol.DEFAUL
             if (port !in 1..65535) return null
             val looksNumeric = host.all { it.isDigit() || it == '.' }
             if (looksNumeric) {
-                if (!isValidIpv4(host)) return null
-            } else if (!HOSTNAME.matches(host)) {
+                if (!isPrivateIpv4(host)) return null
+            } else if (!HOSTNAME.matches(host) || !isLanHostname(host)) {
                 return null
             }
             return HubAddress(host, port)

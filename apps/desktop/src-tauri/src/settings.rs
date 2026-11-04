@@ -211,10 +211,35 @@ pub fn from_value_lenient(raw: &Value, default_output_dir: &str) -> (Settings, V
         }
     }
     let mut settings = serde_json::from_value::<Settings>(Value::Object(merged)).unwrap_or(defaults);
-    if settings.output_directory.trim().is_empty() {
+    if settings.output_directory.trim().is_empty() || check_output_directory(&settings.output_directory).is_err() {
+        // A hand-edited file must not widen the asset scope or redirect recordings to system paths.
         settings.output_directory = default_output_dir.to_string();
     }
     (settings, dropped)
+}
+
+/// Output directories feed both ffmpeg output paths and the asset-protocol scope, so they must
+/// be absolute, free of `..`, and never a filesystem root or a system directory.
+pub fn check_output_directory(dir: &str) -> CaptureResult<()> {
+    let p = Path::new(dir.trim());
+    if dir.contains('\0') || !p.is_absolute() {
+        return Err(CaptureError::invalid_config("outputDirectory must be an absolute path"));
+    }
+    if dir.split(['/', '\\']).any(|seg| seg == ".." || seg == ".") {
+        return Err(CaptureError::invalid_config("outputDirectory must not contain '.' or '..' segments"));
+    }
+    if p.parent().is_none() {
+        return Err(CaptureError::invalid_config("outputDirectory must not be a filesystem root"));
+    }
+    #[cfg(unix)]
+    {
+        const SYSTEM: [&str; 12] = ["etc", "usr", "bin", "sbin", "lib", "lib64", "var", "boot", "proc", "sys", "dev", "root"];
+        let first = p.components().nth(1).and_then(|c| c.as_os_str().to_str());
+        if first.is_some_and(|f| SYSTEM.contains(&f)) {
+            return Err(CaptureError::invalid_config("outputDirectory must not be inside a system directory"));
+        }
+    }
+    Ok(())
 }
 
 /// Strict parse for `save_settings`.
@@ -224,6 +249,7 @@ pub fn from_value_strict(raw: &Value) -> CaptureResult<Settings> {
     if s.output_directory.trim().is_empty() {
         return Err(CaptureError::invalid_config("outputDirectory is required"));
     }
+    check_output_directory(&s.output_directory)?;
     Ok(s)
 }
 
@@ -339,6 +365,21 @@ mod tests {
         save(dir.path(), &s).unwrap();
         assert_eq!(load(dir.path(), "/other"), s);
         assert!(!dir.path().join("settings.json.tmp").exists());
+    }
+
+    #[test]
+    fn output_directory_is_constrained() {
+        for bad in ["", "relative/dir", "/", "/etc", "/usr/share/x", "/home/u/../../etc", "/home/./u"] {
+            assert!(check_output_directory(bad).is_err(), "{bad}");
+        }
+        for ok in ["/home/u/Videos/CaptureOne", "/Users/u/Movies/CaptureOne", "/v"] {
+            assert!(check_output_directory(ok).is_ok(), "{ok}");
+        }
+        let mut raw = Settings::defaults("/home/u/Videos").to_json();
+        raw["outputDirectory"] = "/".into();
+        assert!(from_value_strict(&raw).is_err());
+        let (s, _) = from_value_lenient(&serde_json::json!({ "outputDirectory": "/etc" }), "/home/u/Videos");
+        assert_eq!(s.output_directory, "/home/u/Videos");
     }
 
     #[test]
