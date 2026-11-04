@@ -1,21 +1,104 @@
 [package]
 name = "macos-capture"
-description = "macOS ScreenCaptureKit backend"
+description = "macOS ScreenCaptureKit capture backend for CaptureOne"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "macos_capture"
+path = "src/lib.rs"
 
 [dependencies]
 capture-core.workspace = true
+log.workspace = true
 
+# Everything Apple-specific is only pulled in when building for macOS, so the crate
+# compiles (as platform-independent helpers only) on Linux/Windows.
+# The objc2 family is pure Rust (no build scripts that need the macOS SDK), which lets us
+# `cargo check --target aarch64-apple-darwin` from Linux.
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
-objc2-foundation = "0.3"
-objc2-core-foundation = "0.3"
-objc2-screen-capture-kit = "0.3"
-objc2-core-media = "0.3"
-objc2-core-video = "0.3"
-objc2-core-graphics = "0.3"
-objc2-av-foundation = "0.3"
-block2 = "0.6"
-dispatch2 = "0.3"
+objc2 = { version = "0.6.2", default-features = false, features = ["std"] }
+block2 = { version = "0.6.1", default-features = false, features = ["std"] }
+dispatch2 = { version = "0.3.0", default-features = false, features = ["std", "objc2", "block2"] }
+libc = "0.2.80"
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "objc2-core-foundation",
+  "NSArray",
+  "NSBundle",
+  "NSDictionary",
+  "NSEnumerator",
+  "NSError",
+  "NSObject",
+  "NSProcessInfo",
+  "NSString",
+  "NSValue",
+] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "objc2",
+  "CFArray",
+  "CFCGTypes",
+  "CFDictionary",
+  "CFString",
+] }
+objc2-screen-capture-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "dispatch2",
+  "libc",
+  "objc2-core-foundation",
+  "objc2-core-graphics",
+  "objc2-core-media",
+  "SCError",
+  "SCScreenshotManager",
+  "SCShareableContent",
+  "SCStream",
+] }
+objc2-core-media = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "objc2",
+  "objc2-core-audio-types",
+  "objc2-core-video",
+  "CMBase",
+  "CMBlockBuffer",
+  "CMFormatDescription",
+  "CMSampleBuffer",
+  "CMSync",
+  "CMTime",
+] }
+objc2-core-video = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "bitflags",
+  "CVBase",
+  "CVBuffer",
+  "CVImageBuffer",
+  "CVPixelBuffer",
+  "CVReturn",
+] }
+objc2-core-audio-types = { version = "0.3.2", default-features = false, features = ["std", "CoreAudioBaseTypes"] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "libc",
+  "objc2",
+  "CGBitmapContext",
+  "CGColorSpace",
+  "CGContext",
+  "CGDirectDisplay",
+  "CGDisplayConfiguration",
+  "CGError",
+  "CGGeometry",
+  "CGImage",
+  "CGWindow",
+] }
+objc2-av-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "block2",
+  "AVCaptureDevice",
+  "AVMediaFormat",
+] }
+
+[dev-dependencies]
+serde_json.workspace = true
