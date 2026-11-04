@@ -121,6 +121,17 @@ class EncoderPipelineInstrumentedTest {
         val d = inspected.durationMs ?: 0.0
         assertTrue("duration $d ms", d in 1500.0..9000.0)
         assertTrue("paused frames were dropped", video.framesDropped.get() > 0)
+        android.util.Log.i(
+            "CaptureOneTest",
+            "SYNTHETIC size=${inspected.size} durationMs=$d codec=${inspected.videoCodec} encoder=${candidate.name} " +
+                "audio=${inspected.audioTracks} framesEncoded=${video.framesEncoded.get()} framesDropped=${video.framesDropped.get()} " +
+                "bytes=${file.length()} issues=${inspected.validation.issues}",
+        )
+        // Keep a copy in Movies/CaptureOne so CI can pull it and cross-check with ffprobe.
+        val published = dev.captureone.capture.engine.MediaStorePublisher.publish(
+            context, file, "CaptureOne synthetic pipeline.mp4", "video/mp4", dev.captureone.capture.contract.MediaKind.VIDEO, System.currentTimeMillis(),
+        )
+        android.util.Log.i("CaptureOneTest", "SYNTHETIC published uri=${published.uri} warning=${published.warning}")
         file.delete()
     }
 }

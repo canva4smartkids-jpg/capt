@@ -153,7 +153,10 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;${BUILD_TOOLS}"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Instrumented tests on API 34 emulator
+      - name: ffprobe (to cross-check media pulled from the emulator)
+        working-directory: .
+        run: command -v ffprobe || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null && ffprobe -version | head -1)
+      - name: Instrumented tests on API 34 emulator (synthetic encoder + MediaProjection end-to-end)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -162,10 +165,13 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: apps/android
-          script: ./gradlew --stacktrace :capture:connectedDebugAndroidTest
+          script: bash tools/emulator-smoke.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-instrumented-reports
-          path: native/android-capture/build/reports/androidTests/**
+          path: |
+            native/android-capture/build/reports/androidTests/**
+            native/android-capture/build/outputs/androidTest-results/**
+            apps/android/build/emulator-smoke/**
           if-no-files-found: ignore

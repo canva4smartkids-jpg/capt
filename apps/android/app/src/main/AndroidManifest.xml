@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Capture permissions (foreground service, mediaProjection type, notifications, microphone,
          legacy storage) come from the :capture library manifest. -->
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <!-- A dependency requests READ_EXTERNAL_STORAGE without a cap; CaptureOne only reads its own
+         MediaStore items, which needs no permission on API 29+. -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"
+        tools:node="replace" />
 
     <application
         android:allowBackup="false"
