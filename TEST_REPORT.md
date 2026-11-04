@@ -163,3 +163,16 @@ companion protocol is plain HTTP on the LAN; pairing code not rotated after pair
 | `android` | success on ef939f3 (run 41849443116, incl. API 34 emulator MediaProjection tests); later commits did not touch Android code paths covered by the workflow |
 | `linux-engine` | in progress at hand-off (run 41862538424); last completed run success (41855495856) |
 | `macos` | queued for a hosted macOS runner at hand-off (run 41862538958); last completed native+capture run success (41846405670); the run on ef3ceca was cancelled before finishing |
+
+## 11. Final CI verification (commit 63694c4)
+
+| Workflow / job | Result |
+|---|---|
+| `windows` run 41888074600 | **success** — backend WGC smoke, CLI recording, and `desktop`: NSIS installer built, **silently installed (`/S`), launched (alive after 8 s), uninstalled** |
+| `macos` run 41888074337, job `Rust + capture (macos-14)` | **success** — all 17 steps incl. live ScreenCaptureKit tests, CLI screenshot/recording, ffprobe assertions |
+| `macos` run 41888074337, job `Tauri desktop bundle` | **success** — `.app`/`.dmg` built; dmg mounted, app copied and **launched (alive after 8 s)** |
+| `macos` run 41888074337, job `macos-15` | cancelled — no hosted macOS 15 runner became available within 15 min (GitHub capacity, not a code failure); run conclusion shows `failure` because of this job only |
+| `ci-contracts` run 41888074380 | success (incl. `cargo audit` + `pnpm audit`) |
+| `android` run 41883514182 (c3a028e) | success — phone emulator MediaProjection tests + Android TV / Google TV API 34 emulator jobs |
+| `tv` run 41862538685 | success |
+
