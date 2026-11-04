@@ -49,9 +49,9 @@ pub async fn open_permission_settings(kind: PermissionKind) -> Cmd<()> {
 
 #[tauri::command]
 pub async fn list_sources(state: State<'_, Shared>, kinds: Option<Vec<SourceKind>>) -> Cmd<Vec<CaptureSource>> {
-    let backend = state.backend()?;
+    let engine = state.engine()?;
     let kinds = kinds.filter(|k| !k.is_empty()).unwrap_or_else(|| vec![SourceKind::Display, SourceKind::Window]);
-    let mut list = blocking(move || backend.list_sources(&kinds)).await?;
+    let mut list = blocking(move || engine.list_sources(&kinds)).await?;
     // Never offer our own overlays as capture sources.
     list.retain(|s| !(s.kind == SourceKind::Window && (s.name == windows::INDICATOR_TITLE || s.name == windows::REGION_TITLE)));
     Ok(list)

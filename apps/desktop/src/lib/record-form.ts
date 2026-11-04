@@ -26,7 +26,7 @@ import {
 import type { AudioDevice } from "@captureone/capture-contracts";
 import { estimateFileSizeBytes, resolveOutputSize, videoBitrateKbps, type AppSettings, type Size } from "@captureone/settings";
 
-export type SourceTab = "display" | "window" | "region";
+export type SourceTab = "display" | "window" | "region" | "device";
 export type Countdown = 0 | 3 | 5 | 10;
 
 export interface RegionSelection {
@@ -38,6 +38,7 @@ export interface RecordForm {
   sourceTab: SourceTab;
   displayId: string | null;
   windowId: string | null;
+  deviceId: string | null;
   region: RegionSelection | null;
   video: VideoSettings;
   audio: AudioSettings;
@@ -53,6 +54,7 @@ export function initialRecordForm(settings: AppSettings): RecordForm {
     sourceTab: "display",
     displayId: null,
     windowId: null,
+    deviceId: null,
     region: null,
     video: { ...settings.video },
     audio: {
@@ -94,6 +96,7 @@ export const microphoneGate = (cap: CapabilityReport | null, devices: readonly A
 export const separateTracksGate = (cap: CapabilityReport | null) => gate(cap, "separateAudioTracks", "Separate audio tracks are not supported.");
 export const windowCaptureGate = (cap: CapabilityReport | null) => gate(cap, "windowCapture", "Window capture is not supported on this platform.");
 export const regionCaptureGate = (cap: CapabilityReport | null) => gate(cap, "regionCapture", "Region capture is not supported on this platform.");
+export const deviceCaptureGate = (cap: CapabilityReport | null) => gate(cap, "hdmiCaptureDevice", "Capture devices (HDMI/UVC) are not supported here.");
 export const pauseGate = (cap: CapabilityReport | null) => gate(cap, "pauseResume", "Pause/resume is not supported.");
 export const cursorGate = (cap: CapabilityReport | null) => gate(cap, "cursorCapture", "Cursor capture is not supported.");
 
@@ -174,6 +177,8 @@ export function targetFromForm(form: RecordForm): CaptureTarget | null {
       return form.displayId ? { kind: "display", displayId: form.displayId } : null;
     case "window":
       return form.windowId ? { kind: "window", windowId: form.windowId } : null;
+    case "device":
+      return form.deviceId ? { kind: "device", deviceId: form.deviceId } : null;
     case "region":
       return form.region ? { kind: "region", displayId: form.region.displayId, rect: form.region.rect } : null;
     default: {
@@ -194,6 +199,11 @@ export function captureSize(form: RecordForm, sources: readonly CaptureSource[])
       const s = sources.find((x) => x.kind === "window" && x.id === form.windowId);
       return s ? { width: s.width, height: s.height } : null;
     }
+    case "device": {
+      // listed size is a default; the real size is that of the first frame
+      const s = sources.find((x) => x.kind === "device" && x.id === form.deviceId);
+      return s ? { width: s.width, height: s.height } : null;
+    }
     case "region":
       return form.region ? { width: form.region.rect.width, height: form.region.rect.height } : null;
     default:
@@ -207,7 +217,7 @@ export function describeTarget(form: RecordForm, sources: readonly CaptureSource
   if (t.kind === "display") return sources.find((s) => s.id === t.displayId)?.name ?? "Display";
   if (t.kind === "window") return sources.find((s) => s.id === t.windowId)?.name ?? "Window";
   if (t.kind === "region") return `Region ${t.rect.width}×${t.rect.height} on ${sources.find((s) => s.id === t.displayId)?.name ?? "display"}`;
-  return "Device";
+  return sources.find((s) => s.kind === "device" && s.id === t.deviceId)?.name ?? "Capture device";
 }
 
 /** Picks a sensible default display (primary first). */

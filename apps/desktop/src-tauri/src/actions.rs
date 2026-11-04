@@ -69,8 +69,8 @@ fn run(app: &AppHandle, core: &Shared, action: ShortcutAction) -> CaptureResult<
 pub fn start_default(app: &AppHandle, core: &Shared, capture_device: bool) -> CaptureResult<String> {
     let mut cfg = recording::default_config(core)?;
     if capture_device {
-        let devices = core.backend()?.list_sources(&[SourceKind::Device]).unwrap_or_default();
-        let device = devices.first().ok_or_else(|| CaptureError::unsupported("No HDMI/USB capture device is connected to this computer."))?;
+        let devices = core.engine()?.list_sources(&[SourceKind::Device]).unwrap_or_default();
+        let device = devices.first().ok_or_else(|| CaptureError::unsupported("No HDMI/USB capture device was detected on this computer (a UVC/HDMI capture card is required)."))?;
         cfg.target = CaptureTarget::Device { device_id: device.id.clone() };
     }
     recording::start(app, core, cfg)

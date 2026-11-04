@@ -272,6 +272,60 @@ class Desktop(unittest.TestCase):
             self.assertEqual((v["width"], v["height"]), (800, 600))
             keep_sample(meta["path"], name)
 
+    # --- capture devices (test seam: lavfi stands in for a capture card) -------------
+    # CAPTUREONE_TEST_DEVICE_INPUT replaces the OS device input; real hardware is NOT exercised.
+    def with_fake_device(self):
+        saved = {k: os.environ.get(k) for k in ("CAPTUREONE_TEST_DEVICE_INPUT", "CAPTUREONE_TEST_DEVICE_NAME")}
+        os.environ["CAPTUREONE_TEST_DEVICE_INPUT"] = "-f lavfi -i testsrc2=size=1280x720:rate=30"
+        os.environ["CAPTUREONE_TEST_DEVICE_NAME"] = "Fake HDMI Capture"
+
+        def restore():
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+        self.addCleanup(restore)
+
+    def test_48_device_listed_and_capability(self):
+        self.with_fake_device()
+        _, srcs, _ = run(["sources", "--kind", "device"])
+        dev = [s for s in srcs if s["id"] == "test:capture0"]
+        self.assertEqual(len(dev), 1, srcs)
+        self.assertEqual((dev[0]["kind"], dev[0]["name"]), ("device", "Fake HDMI Capture"))
+        _, caps, _ = run(["capabilities"])
+        self.assertEqual(caps["features"]["hdmiCaptureDevice"]["level"], "partial")
+        _, thumb, _ = run(["thumbnail", "--kind", "device", "--id", "test:capture0"])
+        self.assertTrue(thumb["dataUrl"].startswith("data:image/png;base64,"))
+
+    def test_48_device_record_4s(self):
+        self.with_fake_device()
+        d, meta, ev = self.record("device", ["--target", "device:test:capture0"], duration=4)
+        info = self.check_video(meta, 4.0, 1280, 720)
+        evidence("device_testsrc2_720p30", meta["path"], info)
+        assert_no_session_left(self, d)
+
+    def test_49_device_pause_resume(self):
+        self.with_fake_device()
+        d, meta, ev = self.record("device-pause", ["--target", "device:test:capture0", "--pause-at", "2", "--resume-at", "4"], duration=4)
+        self.check_video(meta, 4.0, 1280, 720)
+        states = [(e["from"], e["to"]) for e in event(ev, "state")]
+        self.assertIn(("recording", "paused"), states)
+        self.assertIn(("paused", "recording"), states)
+
+    def test_49_device_screenshot(self):
+        self.with_fake_device()
+        d = outdir("device-shot")
+        _, meta, _ = run(["screenshot", "--target", "device:test:capture0", "--format", "png", "--out", d])
+        v = streams(ffprobe(meta["path"]), "video")[0]
+        self.assertEqual((v["codec_name"], v["width"], v["height"]), ("png", 1280, 720))
+        self.assertEqual(meta["sourceName"], "Fake HDMI Capture")
+
+    def test_49_device_missing_is_not_found(self):
+        code, _, ev = run(["record", "--out", outdir("device-missing"), "--target", "device:v4l2:/dev/video99", "--duration", "1"], check=False)
+        self.assertNotEqual(code, 0)
+
     # --- audio ---------------------------------------------------------------------
     def test_30_system_audio(self):
         d, meta, _ = self.record("sysaudio", ["--target", f"display:{DISPLAY_ID}", "--height", "720", "--system-audio"], duration=5)

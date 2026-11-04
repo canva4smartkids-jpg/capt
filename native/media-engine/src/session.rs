@@ -372,7 +372,7 @@ fn prepare_inner(engine: &Arc<EngineInner>, config: &RecordingConfig, shared: &A
     }
     let choice = select_encoder(config.video.codec, config.video.hardware_acceleration, &engine.encoders())?;
     let backend = engine.backend.clone();
-    let target = resolve_target(backend.as_ref(), &config.target)?;
+    let target = resolve_target(backend.as_ref(), Some(&ffmpeg), &config.target)?;
 
     let session_dir = session_dir(&output_dir, &shared.id);
     std::fs::create_dir_all(&session_dir)?;
@@ -415,7 +415,10 @@ fn prepare_inner(engine: &Arc<EngineInner>, config: &RecordingConfig, shared: &A
     let latest = Arc::new(LatestFrame::default());
     let sink = Arc::new(SessionVideoSink { latest: latest.clone(), shared: shared.clone(), ended: AtomicBool::new(false), end_error: Mutex::new(None) });
     let opts = VideoStreamOptions { fps: config.video.fps, show_cursor: config.video.show_cursor };
-    rt.video_stream = Some(backend.start_video(&config.target, &opts, sink.clone())?);
+    rt.video_stream = Some(match &config.target {
+        CaptureTarget::Device { device_id } => crate::device::start_stream(&ffmpeg, device_id, config.video.fps, sink.clone())?,
+        _ => backend.start_video(&config.target, &opts, sink.clone())?,
+    });
     let first = latest.wait_first(FIRST_FRAME_TIMEOUT, &|| sink.ended.load(Ordering::SeqCst)).ok_or_else(|| {
         sink.end_error
             .lock()

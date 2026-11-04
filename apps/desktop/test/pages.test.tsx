@@ -47,6 +47,30 @@ beforeEach(() => {
 });
 
 describe("Record page", () => {
+  const withDevice = { ...capabilities, features: { ...capabilities.features, hdmiCaptureDevice: { level: "partial" as const, reason: "requires a UVC/HDMI capture card; HDCP-protected sources are blank" } } };
+
+  it("lists capture devices in their own tab and records the selected one", async () => {
+    backend(withDevice);
+    handlers.set("list_sources", () => [...sources, { id: "v4l2:/dev/video0", kind: "device", name: "Cam Link 4K", width: 1920, height: 1080 }]);
+    at("#/");
+    await userEvent.click(await screen.findByRole("tab", { name: /Capture devices/ }));
+    const card = await screen.findByRole("radio", { name: /Cam Link 4K/ });
+    expect(screen.getByText(/HDCP-protected sources are blank/)).toBeTruthy();
+    expect(callsTo("list_sources")[0]!.args.kinds).toContain("device");
+    handlers.set("start_recording", () => "sess-2");
+    await userEvent.click(card);
+    await userEvent.click(await screen.findByRole("button", { name: /Start recording/ }));
+    await waitFor(() => expect(callsTo("start_recording")).toHaveLength(1));
+    expect((callsTo("start_recording")[0]!.args.config as { target: unknown }).target).toEqual({ kind: "device", deviceId: "v4l2:/dev/video0" });
+  });
+
+  it("shows an empty state when no capture card is detected", async () => {
+    backend(withDevice);
+    at("#/");
+    await userEvent.click(await screen.findByRole("tab", { name: /Capture devices/ }));
+    expect(await screen.findByText("No capture card detected")).toBeTruthy();
+  });
+
   it("starts a recording with a contract config, shows the countdown and cancels with Esc", async () => {
     backend();
     at("#/");

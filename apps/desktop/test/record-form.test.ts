@@ -4,6 +4,7 @@ import type { CapabilityReport } from "@captureone/capture-contracts";
 import {
   buildRecordingConfig,
   buildScreenshotRequest,
+  describeTarget,
   captureSize,
   codecOptions,
   defaultDisplayId,
@@ -16,6 +17,7 @@ import {
   systemAudioGate,
   targetFromForm,
   windowCaptureGate,
+  deviceCaptureGate,
 } from "../src/lib/record-form";
 import { capabilities, settings, sources } from "./fixtures";
 
@@ -109,6 +111,17 @@ describe("targets and config", () => {
     expect(targetFromForm(f)).toEqual({ kind: "region", displayId: "disp-1", rect: { x: 10, y: 20, width: 640, height: 360 } });
     expect(captureSize(f, sources)).toEqual({ width: 640, height: 360 });
     expect(defaultDisplayId(sources)).toBe("disp-0");
+  });
+
+  it("derives a device target from the capture devices tab", () => {
+    const f = { ...form(), sourceTab: "device" as const };
+    expect(targetFromForm(f)).toBeNull();
+    f.deviceId = "v4l2:/dev/video0";
+    expect(targetFromForm(f)).toEqual({ kind: "device", deviceId: "v4l2:/dev/video0" });
+    const dev = { id: "v4l2:/dev/video0", kind: "device" as const, name: "Cam Link 4K", width: 1920, height: 1080 };
+    expect(captureSize(f, [dev])).toEqual({ width: 1920, height: 1080 });
+    expect(describeTarget(f, [dev])).toBe("Cam Link 4K");
+    expect(deviceCaptureGate(null).allowed).toBe(false);
   });
 
   it("builds a schema-valid RecordingConfig with gating applied", () => {

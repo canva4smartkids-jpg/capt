@@ -22,9 +22,9 @@ const USAGE: &str = r#"captureone-cli <command> [options]
 Commands:
   capabilities                      Capability report (encoders verified by test encodes)
   ffmpeg-info                       Located ffmpeg/ffprobe and version
-  sources [--kind display|window]   Capture sources
+  sources [--kind display|window|device] Capture sources
   audio-devices                     Microphones and loopback sources
-  thumbnail --kind display|window --id <id> [--max-width 320]
+  thumbnail --kind display|window|device --id <id> [--max-width 320]
   screenshot --target <t> [--format png|jpeg] [--quality 90] [--no-cursor]
              [--template <name>] --out <dir>
   record --target <t> [--duration <sec>] [--fps 24|30|60] [--codec h264|h265]
@@ -37,7 +37,7 @@ Commands:
   inspect <file>                    ffprobe metadata + validation of a file
   recover --out <dir>               Finalize interrupted sessions into playable MP4s
 
-Targets: display | display:<id> | window:<id> | region:<display>:<x>,<y>,<w>,<h> | region:<x>,<y>,<w>,<h>
+Targets: display | display:<id> | window:<id> | device:<id> (see `sources --kind device`) | region:<display>:<x>,<y>,<w>,<h> | region:<x>,<y>,<w>,<h>
 --duration is the recorded (active) time; with --pause-at/--resume-at (wall-clock seconds
 since start) the wall time is extended by the pause. Without --duration, recording runs
 until Ctrl-C / SIGTERM or a limit is reached.
@@ -176,10 +176,11 @@ fn cmd_sources(a: &Args) -> CaptureResult<ExitCode> {
         None => vec![SourceKind::Display, SourceKind::Window],
         Some("display") => vec![SourceKind::Display],
         Some("window") => vec![SourceKind::Window],
+        Some("device") => vec![SourceKind::Device],
         Some(k) => return Err(usage(format!("unknown --kind '{k}'"))),
     };
     let e = engine()?;
-    print_json(&e.backend().list_sources(&kinds)?);
+    print_json(&e.list_sources(&kinds)?);
     Ok(ExitCode::SUCCESS)
 }
 
@@ -187,6 +188,7 @@ fn cmd_thumbnail(a: &Args) -> CaptureResult<ExitCode> {
     let kind = match a.get("kind") {
         Some("display") | None => SourceKind::Display,
         Some("window") => SourceKind::Window,
+        Some("device") => SourceKind::Device,
         Some(k) => return Err(usage(format!("unknown --kind '{k}'"))),
     };
     let id = a.get("id").ok_or_else(|| usage("--id is required"))?;

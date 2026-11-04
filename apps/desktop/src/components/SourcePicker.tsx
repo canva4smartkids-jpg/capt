@@ -9,19 +9,22 @@ interface Props {
   onChange: (patch: Partial<RecordForm>) => void;
   displays: CaptureSource[];
   windows: CaptureSource[];
+  devices: CaptureSource[];
   loading: boolean;
   error: string | null;
   windowGate: Gate;
   regionGate: Gate;
+  deviceGate: Gate;
   onSelectRegion: (displayId: string) => void;
   selectingRegion: boolean;
   thumbVersion: number;
   disabled: boolean;
 }
 
-export function SourcePicker({ form, onChange, displays, windows, loading, error, windowGate, regionGate, onSelectRegion, selectingRegion, thumbVersion, disabled }: Props) {
+export function SourcePicker({ form, onChange, displays, windows, devices, loading, error, windowGate, regionGate, deviceGate, onSelectRegion, selectingRegion, thumbVersion, disabled }: Props) {
   const displayThumbs = useThumbnails(displays, 360, thumbVersion);
   const windowThumbs = useThumbnails(form.sourceTab === "window" ? windows : [], 320, thumbVersion);
+  const deviceThumbs = useThumbnails(form.sourceTab === "device" ? devices : [], 320, thumbVersion);
   const [regionDisplay, setRegionDisplay] = useState<string | null>(null);
   const regionDisplayId = regionDisplay ?? form.region?.displayId ?? displays.find((d) => d.isPrimary)?.id ?? displays[0]?.id ?? null;
 
@@ -29,6 +32,7 @@ export function SourcePicker({ form, onChange, displays, windows, loading, error
     { id: "display", label: "Displays", icon: "monitor", badge: displays.length || undefined },
     { id: "window", label: "Windows", icon: "window", disabled: !windowGate.allowed, badge: windowGate.allowed ? windows.length || undefined : undefined },
     { id: "region", label: "Region", icon: "region", disabled: !regionGate.allowed },
+    { id: "device", label: "Capture devices", icon: "video", disabled: !deviceGate.allowed, badge: deviceGate.allowed ? devices.length || undefined : undefined },
   ];
 
   return (
@@ -66,6 +70,20 @@ export function SourcePicker({ form, onChange, displays, windows, loading, error
           </div>
         )}
         {windowGate.reason && <p className="hint">{windowGate.reason}</p>}
+      </TabPanel>
+      <TabPanel idPrefix="source" id="device" active={form.sourceTab === "device"}>
+        {devices.length === 0 ? (
+          <EmptyState icon="video" title={loading ? "Looking for capture devices…" : "No capture card detected"} description="Connect a UVC/HDMI capture card, then refresh the list." />
+        ) : (
+          <div className="source-grid" role="radiogroup" aria-label="Capture device to record">
+            {devices.map((d) => (
+              <SourceCard key={d.id} source={d} thumb={deviceThumbs[d.id]} selected={form.deviceId === d.id} disabled={disabled} onSelect={() => onChange({ deviceId: d.id })} />
+            ))}
+          </div>
+        )}
+        <p className="hint">
+          {deviceGate.reason ?? "Requires a UVC/HDMI capture card; HDCP-protected sources are blank."} The card&apos;s audio is not part of the video: choose its audio input as the microphone to record it.
+        </p>
       </TabPanel>
       <TabPanel idPrefix="source" id="region" active={form.sourceTab === "region"}>
         <div className="region-panel">
@@ -124,7 +142,7 @@ function SourceCard({ source, thumb, selected, disabled, onSelect }: { source: C
           <img src={thumb.url} alt="" draggable={false} />
         ) : thumb?.status === "error" ? (
           <div className="source-card__placeholder" title={thumb.message}>
-            <Icon name={source.kind === "window" ? "window" : "monitor"} size={28} />
+            <Icon name={source.kind === "window" ? "window" : source.kind === "device" ? "video" : "monitor"} size={28} />
             <span>Preview unavailable</span>
           </div>
         ) : (

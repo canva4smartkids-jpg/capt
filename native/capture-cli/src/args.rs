@@ -66,7 +66,7 @@ fn parse_rect(s: &str) -> Result<Rect, String> {
     Ok(Rect { x: x as i32, y: y as i32, width: w as u32, height: h as u32 })
 }
 
-/// `display`, `display:<id>`, `window:<id>`, `region:<display>:<x>,<y>,<w>,<h>`,
+/// `display`, `display:<id>`, `window:<id>`, `device:<id>`, `region:<display>:<x>,<y>,<w>,<h>`,
 /// `region:<x>,<y>,<w>,<h>` (primary display).
 pub fn parse_target(t: &str, primary: &dyn Fn() -> capture_core::CaptureResult<String>) -> Result<CaptureTarget, String> {
     let prim = || primary().map_err(|e| e.message);
@@ -78,6 +78,9 @@ pub fn parse_target(t: &str, primary: &dyn Fn() -> capture_core::CaptureResult<S
     }
     if let Some(id) = t.strip_prefix("window:") {
         return Ok(CaptureTarget::Window { window_id: id.to_string() });
+    }
+    if let Some(id) = t.strip_prefix("device:") {
+        return Ok(CaptureTarget::Device { device_id: id.to_string() });
     }
     if let Some(rest) = t.strip_prefix("region:") {
         return match rest.rsplit_once(':') {
@@ -111,6 +114,7 @@ mod tests {
     #[test]
     fn parses_targets() {
         assert_eq!(parse_target("display", &p).unwrap(), CaptureTarget::Display { display_id: "screen".into() });
+        assert_eq!(parse_target("device:v4l2:/dev/video0", &p).unwrap(), CaptureTarget::Device { device_id: "v4l2:/dev/video0".into() });
         assert_eq!(parse_target("window:0x1a00003", &p).unwrap(), CaptureTarget::Window { window_id: "0x1a00003".into() });
         assert_eq!(
             parse_target("region:all:10,20,300,200", &p).unwrap(),

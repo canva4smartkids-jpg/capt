@@ -32,7 +32,7 @@ Whether each item has actually been *verified* on real hardware is tracked separ
 | Microphone | Native (WASAPI via cpal) | Native (CoreAudio via cpal; TCC prompt) | Native (ALSA/Pulse via cpal) | Native (AudioRecord) | Partial (few TVs have mics) | — | — |
 | System / internal audio | Native (WASAPI loopback) | Native (SCK audio, macOS 13+) | Partial (PulseAudio/PipeWire monitor) | Partial (AudioPlaybackCapture API 29+; apps can opt out) | Partial¹ | — | — |
 | Separate audio tracks | Native | Native | Native | Native | Partial¹ | — | — |
-| HDMI capture card input | **Not implemented in 0.1.0** (planned: DirectShow/MF via ffmpeg) | **Not implemented** (planned: AVFoundation) | **Not implemented** (planned: V4L2) | Unsupported | Unsupported | — | — |
+| HDMI capture card input | **Implemented, partial** via ffmpeg `dshow` (`dshow:<name>`); verified only by list-parser unit tests and the lavfi test seam | **Implemented, partial** via ffmpeg `avfoundation` (`avfoundation:<index>`; screens excluded); verified only by parser tests and the test seam | **Implemented, partial** via ffmpeg `v4l2` (`v4l2:/dev/videoN`, enumerated from sysfs); verified only by sysfs/arg tests and the test seam | Unsupported | Unsupported | — | — |
 | DRM / HDCP content | Blank (OS-enforced) | Blank (OS-enforced) | Not protected by X11 | Blank (FLAG_SECURE) | Blank | Blank | Blank |
 
 ## 2. Product features

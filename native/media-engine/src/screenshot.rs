@@ -14,7 +14,7 @@ pub(crate) struct TargetInfo {
     pub region: Option<(Rect, Size)>,
 }
 
-pub(crate) fn resolve_target(backend: &dyn CaptureBackend, target: &CaptureTarget) -> CaptureResult<TargetInfo> {
+pub(crate) fn resolve_target(backend: &dyn CaptureBackend, ffmpeg: Option<&Path>, target: &CaptureTarget) -> CaptureResult<TargetInfo> {
     match target {
         CaptureTarget::Display { display_id } => Ok(TargetInfo { source: find_source(backend, SourceKind::Display, display_id)?, region: None }),
         CaptureTarget::Window { window_id } => Ok(TargetInfo { source: find_source(backend, SourceKind::Window, window_id)?, region: None }),
@@ -24,7 +24,7 @@ pub(crate) fn resolve_target(backend: &dyn CaptureBackend, target: &CaptureTarge
                 .ok_or_else(|| CaptureError::invalid_config(format!("region {rect:?} is outside display '{display_id}' ({}x{})", source.width, source.height)))?;
             Ok(TargetInfo { source, region: Some((*rect, size)) })
         }
-        CaptureTarget::Device { .. } => Err(CaptureError::unsupported("capture devices are not supported by the desktop engine")),
+        CaptureTarget::Device { device_id } => Ok(TargetInfo { source: crate::device::find_device(ffmpeg, device_id)?, region: None }),
     }
 }
 
@@ -111,9 +111,9 @@ pub(crate) fn validate_image(path: &Path, expected: Option<Size>) -> (MediaValid
     (MediaValidation { valid, checked_at: now_iso8601(), tool: "image-rs decode".into(), issues }, dims)
 }
 
-pub(crate) fn screenshot(backend: &dyn CaptureBackend, req: &ScreenshotRequest, output_dir: &Path) -> CaptureResult<MediaMetadata> {
-    let info = resolve_target(backend, &req.target)?;
-    let frame = backend.screenshot(&req.target, req.show_cursor)?;
+pub(crate) fn screenshot(backend: &dyn CaptureBackend, ffmpeg: Option<&Path>, req: &ScreenshotRequest, output_dir: &Path) -> CaptureResult<MediaMetadata> {
+    let info = resolve_target(backend, ffmpeg, &req.target)?;
+    let frame = grab(backend, ffmpeg, &req.target, req.show_cursor)?;
     let frame = apply_region(frame, info.region)?;
     let bytes = encode_image(&frame, req.format, req.jpeg_quality)?;
     std::fs::create_dir_all(output_dir)?;
@@ -191,14 +191,25 @@ pub(crate) fn inspect_image(path: &Path) -> CaptureResult<MediaMetadata> {
     })
 }
 
+/// One frame of any target; devices are read through ffmpeg.
+fn grab(backend: &dyn CaptureBackend, ffmpeg: Option<&Path>, target: &CaptureTarget, show_cursor: bool) -> CaptureResult<VideoFrame> {
+    match target {
+        CaptureTarget::Device { device_id } => {
+            let ff = ffmpeg.ok_or_else(|| CaptureError::new(CaptureErrorCode::EncoderUnavailable, "ffmpeg was not found (needed for capture devices)"))?;
+            crate::device::grab_frame(ff, device_id)
+        }
+        _ => backend.screenshot(target, show_cursor),
+    }
+}
+
 /// PNG data URL of a display/window scaled to at most `max_width` pixels wide.
-pub(crate) fn source_thumbnail(backend: &dyn CaptureBackend, kind: SourceKind, source_id: &str, max_width: u32) -> CaptureResult<String> {
+pub(crate) fn source_thumbnail(backend: &dyn CaptureBackend, ffmpeg: Option<&Path>, kind: SourceKind, source_id: &str, max_width: u32) -> CaptureResult<String> {
     let target = match kind {
         SourceKind::Display => CaptureTarget::Display { display_id: source_id.to_string() },
         SourceKind::Window => CaptureTarget::Window { window_id: source_id.to_string() },
-        SourceKind::Device => return Err(CaptureError::unsupported("device thumbnails are not supported")),
+        SourceKind::Device => CaptureTarget::Device { device_id: source_id.to_string() },
     };
-    let frame = backend.screenshot(&target, false)?;
+    let frame = grab(backend, ffmpeg, &target, false)?;
     let img = image::RgbImage::from_raw(frame.width, frame.height, rgb_bytes(&frame)).ok_or_else(|| CaptureError::internal("frame buffer size mismatch"))?;
     let max_w = max_width.clamp(16, 4096);
     let img = if frame.width > max_w {

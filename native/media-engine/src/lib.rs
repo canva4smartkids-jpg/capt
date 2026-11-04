@@ -15,6 +15,7 @@
 pub mod args;
 pub mod audio;
 pub mod clock;
+pub mod device;
 pub mod encoders;
 mod finalize;
 pub mod manifest;
@@ -79,6 +80,7 @@ pub(crate) struct EngineInner {
     pub(crate) ffprobe: Option<PathBuf>,
     ffmpeg_version: Option<String>,
     encoders: OnceLock<Vec<EncoderInfo>>,
+    device_demuxer: OnceLock<bool>,
 }
 
 impl EngineInner {
@@ -106,7 +108,7 @@ impl MediaEngine {
         let ffmpeg_version = ffmpeg.as_deref().and_then(tools::tool_version);
         // An ffmpeg that cannot even print its version is unusable.
         let ffmpeg = if ffmpeg_version.is_some() { ffmpeg } else { None };
-        Ok(Self { inner: Arc::new(EngineInner { backend, ffmpeg, ffprobe, ffmpeg_version, encoders: OnceLock::new() }) })
+        Ok(Self { inner: Arc::new(EngineInner { backend, ffmpeg, ffprobe, ffmpeg_version, encoders: OnceLock::new(), device_demuxer: OnceLock::new() }) })
     }
 
     pub fn backend(&self) -> &Arc<dyn CaptureBackend> {
@@ -165,6 +167,15 @@ impl MediaEngine {
         if !can_record && r.is_usable(FeatureKey::SystemAudio) {
             r.features.insert(FeatureKey::SystemAudio, FeatureSupport::unsupported("recording is unavailable"));
         }
+        let device = match self.inner.ffmpeg.as_deref() {
+            Some(ff) if *self.inner.device_demuxer.get_or_init(|| device::demuxer_available(ff)) && can_record => FeatureSupport::with(
+                SupportLevel::Partial,
+                "requires a UVC/HDMI capture card; HDCP-protected sources are blank. Select the card's audio input as the microphone device for its audio.",
+            ),
+            Some(_) if can_record => FeatureSupport::unsupported("this ffmpeg build has no OS video-device demuxer (v4l2/dshow/avfoundation)"),
+            _ => FeatureSupport::unsupported("recording is unavailable (ffmpeg/ffprobe or encoder missing)"),
+        };
+        r.features.insert(FeatureKey::HdmiCaptureDevice, device);
         r.encoders = encs;
         match (&self.inner.ffmpeg, &self.inner.ffmpeg_version) {
             (Some(p), Some(v)) => r.notes.push(format!("Encoders verified with real test encodes using ffmpeg {v} at {}", p.display())),
@@ -181,15 +192,30 @@ impl MediaEngine {
         Ok(devices)
     }
 
+    /// Video capture devices (HDMI capture cards, UVC webcams) found on this machine.
+    pub fn list_capture_devices(&self) -> Vec<CaptureSource> {
+        device::list_devices(self.inner.ffmpeg.as_deref())
+    }
+
+    /// Backend sources plus capture devices when `SourceKind::Device` is requested.
+    pub fn list_sources(&self, kinds: &[SourceKind]) -> CaptureResult<Vec<CaptureSource>> {
+        let mut out = self.inner.backend.list_sources(kinds)?;
+        out.retain(|s| s.kind != SourceKind::Device);
+        if kinds.contains(&SourceKind::Device) {
+            out.extend(self.list_capture_devices());
+        }
+        Ok(out)
+    }
+
     /// Captures, encodes (PNG/JPEG), writes into `output_dir`, validates by decoding, returns metadata.
     /// `req.delay_sec` is not applied here (the caller handles delays/countdowns).
     pub fn screenshot(&self, req: &ScreenshotRequest, output_dir: &Path) -> CaptureResult<MediaMetadata> {
-        screenshot::screenshot(self.inner.backend.as_ref(), req, output_dir)
+        screenshot::screenshot(self.inner.backend.as_ref(), self.inner.ffmpeg.as_deref(), req, output_dir)
     }
 
     /// PNG data URL of a source scaled to max_width (for source pickers).
     pub fn source_thumbnail(&self, kind: SourceKind, source_id: &str, max_width: u32) -> CaptureResult<String> {
-        screenshot::source_thumbnail(self.inner.backend.as_ref(), kind, source_id, max_width)
+        screenshot::source_thumbnail(self.inner.backend.as_ref(), self.inner.ffmpeg.as_deref(), kind, source_id, max_width)
     }
 
     /// Starts recording immediately (the caller handles any countdown).

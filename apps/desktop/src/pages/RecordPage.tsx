@@ -21,6 +21,7 @@ import {
   microphoneGate,
   pauseGate,
   regionCaptureGate,
+  deviceCaptureGate,
   resolutionFromKey,
   resolutionKey,
   resolutionOptions,
@@ -55,7 +56,7 @@ export function RecordPage() {
 
   // Re-seed the form once persisted settings arrive.
   useEffect(() => {
-    if (settingsLoaded) setForm((f) => ({ ...initialRecordForm(settings), sourceTab: f.sourceTab, displayId: f.displayId, windowId: f.windowId, region: f.region }));
+    if (settingsLoaded) setForm((f) => ({ ...initialRecordForm(settings), sourceTab: f.sourceTab, displayId: f.displayId, windowId: f.windowId, deviceId: f.deviceId, region: f.region }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsLoaded]);
 
@@ -67,13 +68,15 @@ export function RecordPage() {
   const loadSources = useCallback(async () => {
     setSourcesLoading(true);
     try {
-      const list = await invoke("list_sources", { kinds: ["display", "window"] });
+      const list = await invoke("list_sources", { kinds: ["display", "window", "device"] });
       setSources(list);
       setSourcesError(null);
       setForm((f) => {
         const displayOk = list.some((s) => s.kind === "display" && s.id === f.displayId);
         const windowOk = list.some((s) => s.kind === "window" && s.id === f.windowId);
-        return { ...f, displayId: displayOk ? f.displayId : defaultDisplayId(list), windowId: windowOk ? f.windowId : null };
+        const deviceOk = list.some((s) => s.kind === "device" && s.id === f.deviceId);
+        const firstDevice = list.find((s) => s.kind === "device")?.id ?? null;
+        return { ...f, displayId: displayOk ? f.displayId : defaultDisplayId(list), windowId: windowOk ? f.windowId : null, deviceId: deviceOk ? f.deviceId : firstDevice };
       });
     } catch (e) {
       setSourcesError(describeError(asFailure(e).toJSON()));
@@ -95,6 +98,7 @@ export function RecordPage() {
 
   const displays = useMemo(() => sources.filter((s) => s.kind === "display"), [sources]);
   const windows = useMemo(() => sources.filter((s) => s.kind === "window"), [sources]);
+  const devices = useMemo(() => sources.filter((s) => s.kind === "device"), [sources]);
   const size = captureSize(form, sources);
 
   const sysGate = systemAudioGate(capabilities);
@@ -180,10 +184,12 @@ export function RecordPage() {
               onChange={patch}
               displays={displays}
               windows={windows}
+              devices={devices}
               loading={sourcesLoading}
               error={sourcesError}
               windowGate={windowCaptureGate(capabilities)}
               regionGate={regionCaptureGate(capabilities)}
+              deviceGate={deviceCaptureGate(capabilities)}
               onSelectRegion={(id) => void selectRegion(id)}
               selectingRegion={selectingRegion}
               thumbVersion={thumbVersion}
