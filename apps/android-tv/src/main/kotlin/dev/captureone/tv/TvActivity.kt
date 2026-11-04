@@ -1,7 +1,9 @@
 package dev.captureone.tv
 
+import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -125,6 +127,17 @@ private fun TvApp(vm: TvViewModel) {
             vm.showMessage("This TV has no screen-capture consent screen. Use companion mode or HDMI capture.")
         }
     }
+    val audioPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) launchConsent(Pending.RECORD) else vm.showMessage("Internal audio needs the microphone permission (RECORD_AUDIO). Turn internal audio off or allow it.")
+    }
+    fun startRecording() {
+        val needsAudio = settings.audio.system.enabled && vm.systemAudioAvailable()
+        if (needsAudio && context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            audioPermission.launch(Manifest.permission.RECORD_AUDIO)
+        } else {
+            launchConsent(Pending.RECORD)
+        }
+    }
 
     when (val r = route) {
         Route.Home -> {
@@ -159,7 +172,7 @@ private fun TvApp(vm: TvViewModel) {
                 onCycleCountdown = vm::cycleCountdown,
                 onToggleSystemAudio = vm::setSystemAudio,
                 onCycleMaxDuration = vm::cycleMaxDuration,
-                onStart = { launchConsent(Pending.RECORD) },
+                onStart = ::startRecording,
                 onPause = { CaptureController.pause(context) },
                 onResume = { CaptureController.resume(context) },
                 onStop = { CaptureController.stop(context) },

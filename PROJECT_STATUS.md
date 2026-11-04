@@ -4,6 +4,32 @@ Sprint start: 2026-11-04 12:52 UTC. Reports are appended newest-first.
 
 ---
 
+## Report #2 — 2026-11-04 ~14:25 UTC (T+1:30)
+
+### Actual working functionality (verified)
+- **Desktop capture + MP4 recording works on Linux X11** (Priority 1 met on the one desktop OS available here): display/region/window capture, H.264 and H.265, 24/30/60 fps, resolution scaling, pause/resume, PNG/JPEG screenshots, system audio and microphone (mixed and separate tracks), A/V sync within ~10–20 ms, crash recovery after `kill -9`, duration/size/disk-full limits, source-closed handling, flat memory. 25/25 integration + 60/60 unit tests; every output checked with ffprobe. Independently re-checked by the coordinator (see `TEST_REPORT.md` §2). Samples in `artifacts/samples/`.
+- **TV companion stack** works in headless Chromium against a real hub instance (28/28 E2E steps); hub + discovery 58/58 tests; `.wgt` and `.ipk` packages built.
+
+### Implemented, compile-verified only
+- Windows Graphics Capture + WASAPI loopback backend (MSVC type-check, mingw full link, 27 unit tests).
+- macOS ScreenCaptureKit backend (aarch64/x86_64 type-check, 40 unit tests).
+
+### Build / CI results
+- `ci-contracts`: green. `windows`, `macos`, `linux-engine`: first runs **failed** → the respective workstreams are now debugging on the real runners (Windows/macOS runtime verification depends on these runs).
+
+### Bugs fixed (highlights)
+- Engine: disk-guard false positives when the shared disk filled; resize handling; recovery trims partial last fragment.
+- TV: SSDP merge dropping devices with the same description URL; empty thumbnails for stills; duplicate mDNS loopback record.
+- CI: in-progress runs were being cancelled by frequent pushes → queue instead.
+
+### Remaining
+Desktop app (Tauri UI, Linux bundles, E2E, hub integration) and Android (APK builds) still running; Windows/macOS/Linux CI to green; final docs, licensing audit, acceptance.
+
+### Blockers
+Unchanged (`BLOCKERS.md`). New: MSVC cross-link needs `aka.ms` / `download.visualstudio.microsoft.com` (blocked) — CI builds MSVC instead.
+
+---
+
 ## Report #1 — 2026-11-04 ~13:20 UTC (T+0:30)
 
 ### Environment inspection

@@ -178,8 +178,8 @@ jobs:
           brew install ffmpeg
           ffmpeg -hide_banner -encoders 2>/dev/null | grep -E 'videotoolbox|libx264' | tee "$OUT/ffmpeg-encoders.txt" || true
 
-      # captureone-cli's argument syntax is owned by the engine workstream; this step discovers
-      # it from --help and falls back across common spellings for the output directory.
+      # captureone-cli (engine workstream): `<cmd> --target <t> --out <dir>`; prints MediaMetadata
+      # JSON, exit 0 = written and validated by the engine, 3 = written but failed validation.
       - name: captureone-cli capabilities / sources / screenshot / record (needs the TCC grant)
         id: cli
         if: steps.build.outputs.cli_ok == 'true'
@@ -187,58 +187,45 @@ jobs:
         timeout-minutes: 10
         env:
           CLI: ${{ steps.build.outputs.cli }}
+          CAPTUREONE_LOG: info
         run: |
-          MEDIA="$OUT/media"; mkdir -p "$MEDIA"
-          "$CLI" --help 2>&1 | tee "$OUT/cli-help.txt" || true
-          for sub in capabilities sources screenshot record; do "$CLI" "$sub" --help > "$OUT/cli-help-$sub.txt" 2>&1 || true; done
-
-          run() { echo "+ captureone-cli $*" >&2; "$CLI" "$@"; }
-          # True if `captureone-cli <sub> --help` lists the exact flag token.
-          has_flag() { grep -qE -- "(^|[^-[:alnum:]])$2([^-[:alnum:]]|\$)" "$OUT/cli-help-$1.txt" 2>/dev/null; }
-          out_args() {
-            for flag in --output-dir --out-dir --out --output -o; do
-              if has_flag "$1" "$flag"; then echo "$flag"; return; fi
-            done
-          }
-
+          set +e
+          MEDIA="$OUT/media"
+          mkdir -p "$MEDIA/screenshot" "$MEDIA/record" "$MEDIA/record-audio" "$MEDIA/record-region"
+          "$CLI" --help > "$OUT/cli-help.txt" 2>&1
           status=0
-          run capabilities > "$OUT/capabilities.json" 2> "$OUT/capabilities.err" || status=1
-          cat "$OUT/capabilities.json" "$OUT/capabilities.err"
-          run sources > "$OUT/sources.json" 2> "$OUT/sources.err" || status=1
-          cat "$OUT/sources.json" "$OUT/sources.err"
-          display_id=$(python3 - "$OUT/sources.json" <<'PY'
+          step() {
+            local name=$1; shift
+            echo "::group::captureone-cli $*"
+            "$CLI" "$@" > "$OUT/cli-$name.json" 2> "$OUT/cli-$name.err"
+            local rc=$?
+            cat "$OUT/cli-$name.json"; tail -n 60 "$OUT/cli-$name.err"
+            echo "::endgroup::"
+            echo "captureone-cli $name: exit $rc"
+            [ "$rc" -eq 0 ] || status=1
+          }
+          step capabilities capabilities
+          step sources sources
+          display_id=$(python3 - "$OUT/cli-sources.json" <<'PY'
           import json, sys
           try:
               data = json.load(open(sys.argv[1]))
           except Exception:
               sys.exit(0)
-          items = data if isinstance(data, list) else data.get("sources", []) if isinstance(data, dict) else []
-          for s in items:
+          for s in data if isinstance(data, list) else []:
               if isinstance(s, dict) and s.get("kind") == "display":
                   print(s.get("id", ""))
                   break
           PY
           )
-          echo "first display id: ${display_id:-<unknown>}"
-
-          for sub in screenshot record; do
-            args=()
-            if [ -n "$display_id" ]; then
-              if has_flag "$sub" --target; then args+=(--target "display:$display_id")
-              elif has_flag "$sub" --display; then args+=(--display "$display_id"); fi
-            fi
-            if [ "$sub" = record ]; then
-              args+=(--duration 5)
-              has_flag record --codec && args+=(--codec h264)
-            fi
-            flag=$(out_args "$sub")
-            if [ -n "$flag" ]; then
-              run "$sub" "${args[@]}" "$flag" "$MEDIA" 2>&1 | tee "$OUT/$sub.log"
-            else
-              (cd "$MEDIA" && run "$sub" "${args[@]}") 2>&1 | tee "$OUT/$sub.log"
-            fi
-            [ "${PIPESTATUS[0]}" -eq 0 ] || status=1
-          done
+          echo "first display id: ${display_id:-<none>}"
+          target="display${display_id:+:$display_id}"
+          step screenshot screenshot --target "$target" --out "$MEDIA/screenshot"
+          step record record --target "$target" --duration 5 --codec h264 --out "$MEDIA/record"
+          step record-audio record --target "$target" --duration 5 --codec h264 --system-audio --out "$MEDIA/record-audio"
+          if [ -n "$display_id" ]; then
+            step record-region record --target "region:$display_id:0,0,640,360" --duration 3 --codec h264 --out "$MEDIA/record-region"
+          fi
           echo "Produced media:"; find "$MEDIA" -type f -print | tee "$OUT/media-files.txt"
           exit $status
 
@@ -246,34 +233,68 @@ jobs:
         if: steps.build.outputs.cli_ok == 'true'
         continue-on-error: true
         run: |
-          MEDIA="$OUT/media"
-          png=$(find "$MEDIA" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) | head -n1)
-          mp4=$(find "$MEDIA" -type f -name '*.mp4' | head -n1)
-          fail=0
-          if [ -n "$png" ]; then
-            ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of json "$png" | tee "$OUT/ffprobe-screenshot.json"
-            python3 -c 'import json,sys; s=json.load(open(sys.argv[1]))["streams"][0]; assert s["width"]>0 and s["height"]>0, s; print("screenshot OK", s)' "$OUT/ffprobe-screenshot.json" || fail=1
-          else
-            echo "::warning::no screenshot file was produced"; fail=1
-          fi
-          if [ -n "$mp4" ]; then
-            ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name,width,height,avg_frame_rate -of json "$mp4" | tee "$OUT/ffprobe-recording.json"
-            python3 - "$OUT/ffprobe-recording.json" <<'PY' || fail=1
-          import json, sys
-          d = json.load(open(sys.argv[1]))
-          dur = float(d["format"]["duration"])
-          video = [s for s in d["streams"] if s["codec_type"] == "video"]
-          assert video, "no video stream"
-          v = video[0]
-          assert v["codec_name"] in ("h264", "hevc"), v
-          assert v["width"] > 0 and v["height"] > 0, v
-          assert 4.0 <= dur <= 7.0, f"duration {dur}"
-          print(f"recording OK: {v['codec_name']} {v['width']}x{v['height']} {dur:.2f}s, audio streams: {sum(s['codec_type'] == 'audio' for s in d['streams'])}")
+          python3 - "$OUT/media" "$OUT" <<'PY'
+          import glob, json, os, subprocess, sys
+          media, out = sys.argv[1], sys.argv[2]
+          failures = []
+
+          def probe(path):
+              r = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                                  "format=duration:stream=codec_type,codec_name,width,height,sample_rate,channels",
+                                  "-of", "json", path], capture_output=True, text=True)
+              if r.returncode != 0:
+                  raise RuntimeError(r.stderr.strip())
+              return json.loads(r.stdout)
+
+          def first(pattern):
+              files = sorted(glob.glob(os.path.join(media, pattern), recursive=True))
+              return files[0] if files else None
+
+          def check(name, pattern, fn):
+              path = first(pattern)
+              if not path:
+                  failures.append(f"{name}: no file matching {pattern}")
+                  return
+              try:
+                  info = probe(path)
+                  with open(os.path.join(out, f"ffprobe-{name}.json"), "w") as f:
+                      json.dump(info, f, indent=2)
+                  print(f"{name}: {os.path.basename(path)} -> {fn(info)}")
+              except Exception as e:  # noqa: BLE001
+                  failures.append(f"{name}: {e}")
+
+          def streams(info, kind):
+              return [s for s in info["streams"] if s["codec_type"] == kind]
+
+          def screenshot(info):
+              v = streams(info, "video")[0]
+              assert v["width"] > 0 and v["height"] > 0, v
+              return f"{v['codec_name']} {v['width']}x{v['height']}"
+
+          def video(min_d, max_d, size=None, audio=False):
+              def fn(info):
+                  d = float(info["format"]["duration"])
+                  v = streams(info, "video")
+                  assert v, "no video stream"
+                  v = v[0]
+                  assert v["codec_name"] == "h264", v
+                  assert min_d <= d <= max_d, f"duration {d:.2f}s"
+                  if size:
+                      assert (v["width"], v["height"]) == size, (v["width"], v["height"])
+                  a = streams(info, "audio")
+                  if audio:
+                      assert a, "no audio stream"
+                  return f"h264 {v['width']}x{v['height']} {d:.2f}s, audio: {[(s['codec_name'], s.get('sample_rate'), s.get('channels')) for s in a]}"
+              return fn
+
+          check("screenshot", "screenshot/**/*.png", screenshot)
+          check("record", "record/**/*.mp4", video(4.0, 7.0))
+          check("record-audio", "record-audio/**/*.mp4", video(4.0, 7.0, audio=True))
+          check("record-region", "record-region/**/*.mp4", video(2.0, 5.0, size=(640, 360)))
+          for f in failures:
+              print("FAIL", f)
+          sys.exit(1 if failures else 0)
           PY
-          else
-            echo "::warning::no recording was produced"; fail=1
-          fi
-          exit $fail
 
       - name: Summary
         if: always()
