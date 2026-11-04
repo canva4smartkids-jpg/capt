@@ -90,6 +90,8 @@ pub(crate) struct StreamShared {
     stopping: AtomicBool,
     last_size: Mutex<Option<(u32, u32)>>,
     transient_failures: AtomicU64,
+    /// A status-triggered source probe is running (at most one at a time).
+    probe_pending: AtomicBool,
 }
 
 impl StreamShared {
@@ -101,6 +103,7 @@ impl StreamShared {
             stopping: AtomicBool::new(false),
             last_size: Mutex::new(None),
             transient_failures: AtomicU64::new(0),
+            probe_pending: AtomicBool::new(false),
         })
     }
 
@@ -136,12 +139,17 @@ impl StreamShared {
         if self.inactive() {
             return;
         }
+        // Status-triggered probes (no error) are coalesced; error probes always run.
+        if error.is_none() && self.probe_pending.swap(true, Ordering::SeqCst) {
+            return;
+        }
         let me = Arc::clone(self);
         spawn_detached("sck-stream-probe", move || {
             let exists = match me.probe {
                 Some(probe) => probe.exists(),
                 None => true,
             };
+            me.probe_pending.store(false, Ordering::SeqCst);
             let event = match error {
                 Some(err) => Some(classify_stream_stop(err, exists)),
                 None if !exists => Some(StreamEvent::SourceClosed),
