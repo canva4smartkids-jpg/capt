@@ -59,8 +59,9 @@ impl VideoFrame {
     pub fn to_rgba(&self) -> Vec<u8> {
         let packed = self.packed_bgra();
         let mut out = Vec::with_capacity(packed.len());
-        for px in packed.chunks_exact(4) {
-            out.extend_from_slice(&[px[2], px[1], px[0], 255]);
+        let (pixels, _) = packed.as_chunks::<4>();
+        for &[b, g, r, _] in pixels {
+            out.extend_from_slice(&[r, g, b, 255]);
         }
         out
     }

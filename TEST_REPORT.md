@@ -77,7 +77,12 @@ physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical micropho
 |---|---|---|
 | `cargo check` / `clippy -D warnings` for `aarch64-apple-darwin` and `x86_64-apple-darwin` | container | pass |
 | Unit tests (PCM de-interleave, bytesPerRow copy, points↔pixels, OS gating, error mapping) | container | 40/40 pass |
-| Native build/link, live SCK tests, CLI recording | GitHub Actions `macos-14`/`macos-15` | **in progress** — first run failed; being fixed. Capture depends on whether the runner accepts a TCC grant |
+| Native build/link + unit tests + clippy, x86_64 link | GitHub Actions `macos-14` (run 41846405670, job 126631263716) | **pass** |
+| **Live ScreenCaptureKit tests on a real Mac (hosted runner, macOS 14.8.9, 1920x1080)** | same job | **pass — 6/6**: display screenshot 1920x1080 (480 ms), region stream 640x360, display stream, system audio (102 buffers, 48 kHz stereo ≈2.04 s), permission `Granted` (runner image ships Screen Recording grants; CI adds TCC rows for its binaries), unknown source → `SOURCE_NOT_FOUND`; forced macOS 12.3–13 single-frame screenshot path 1/1 |
+| **`captureone-cli` on macOS + ffprobe assertions** | same job (steps 14–15 succeeded; assertions fail the step on mismatch) | screenshot PNG 1920x1080; `record --duration 5` → h264 1920x1080 5.03 s, 151 frames, 0 dropped; `record --system-audio` → h264 + AAC 48 kHz stereo; `record --target region:1:0,0,640,360` → h264 640x360 3.00 s (SCK `sourceRect`) — engine validation `valid: true` for all |
+| Window capture + window-closed → `SourceClosed` | GitHub Actions (commit c1e0602) | pending |
+| macos-15 runner | GitHub Actions | pending (runner queue) |
+| VideoToolbox hardware encoder | — | not exercised (engine chose libx264 on the runner VM) |
 
 ## 5. TV companions, discovery and hub
 
@@ -88,6 +93,7 @@ physical monitors (Xvfb exposes one RandR monitor), Wayland, a physical micropho
 | tv-web unit tests (vitest) | 44/44 pass; `tsc` clean; bundle parses as ES2015 |
 | End-to-end in headless Chromium against a real hub (`node apps/tv-web/scripts/smoke.mjs`) | 28/28 pass using only remote keys: pairing (wrong code refused), live WebSocket status, thumbnails, 24 s H.264 playback with +10 s seek, remote start/pause/stop, Back keys 461/10009, 1280x720 scaling. The hub's recording control was the demo backend (simulated) — proves the control path only |
 | Packages | signed `.wgt` (throwaway author cert + Tizen default distributor cert; SHA-512 digests verified), unsigned `.wgt`, `.ipk`; both boot in Chromium from extracted contents |
+| GitHub Actions `tv` workflow | **pass** — run 41847053140: Rust 58/58, tv-web 44/44, contracts 13/13, headless smoke 28/28, signed `.wgt` (5 author + 6 distributor digests verified), unsigned `.wgt`, `.ipk` built + inspected; artifacts `tizen-wgt`, `webos-ipk`, `tv-web-dist`, `demo-hub`, `tv-screenshots` |
 | Real TVs | **not tested** — no hardware |
 
 ## 6. Pending sections

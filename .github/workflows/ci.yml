@@ -39,3 +39,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Rust contract tests (capture-core)
         run: cargo test -p capture-core
+      - name: Clippy (capture-core, warnings are errors)
+        run: cargo clippy -p capture-core --all-targets --no-deps -- -D warnings
